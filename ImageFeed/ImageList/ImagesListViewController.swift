@@ -1,6 +1,6 @@
 import UIKit
 
-class ImagesListViewController: UIViewController {
+final class ImagesListViewController: UIViewController {
     
     @IBOutlet private var tableView: UITableView!
     
@@ -23,11 +23,11 @@ class ImagesListViewController: UIViewController {
 
 extension ImagesListViewController: UITableViewDataSource {
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        return photosName.count
+        photosName.count
     }
     
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        let cell = tableView.dequeueReusableCell(withIdentifier: "ImagesListCell", for: indexPath)
+        let cell = tableView.dequeueReusableCell(withIdentifier: ImagesListCell.reuseIdentifier, for: indexPath)
         
         guard let imageListCell = cell as? ImagesListCell else {
             return UITableViewCell()
@@ -44,11 +44,10 @@ extension ImagesListViewController {
             return
         }
         
-        cell.cellImage.image = image // вставляем картинку
-        cell.dateLabel.text = dateFormatter.string(from: Date()) // форматируем дату
+        cell.cellImage.image = image
+        cell.dateLabel.text = dateFormatter.string(from: Date())
         
-        /*Для каждой ячейки с чётным индексом установите включённый лайк.
-         Для ячеек с нечётным индексом лайк должен быть выключен. */
+        // чётная ячейка — лайк включён, нечётная — выключен
         let likeImage = indexPath.row % 2 == 0 ? UIImage(named: "like_button_on") : UIImage(named: "like_button_off")
         cell.likeButton.setImage(likeImage, for: .normal)
     }
@@ -57,9 +56,8 @@ extension ImagesListViewController {
 
 extension ImagesListViewController: UITableViewDelegate {
     
-    // метод отвечает за действия, которые будут выполнены при тапе по ячейке таблицы.
-    // адрес ячейки, который содержится в indexPath, передаётся в качестве аргумента
-    // высота = (оригинальная высота * масштаб) + отступы
+    // вызывается при тапе по ячейке
+    // TODO: открыть экран с картинкой
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) { }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
@@ -68,9 +66,14 @@ extension ImagesListViewController: UITableViewDelegate {
         }
         let imageViewInsets = UIEdgeInsets(top: 4, left: 16, bottom: 4, right: 16)
         
-        /*ширина = экран - (left + right)
-         высота = пересчитанная + (top + bottom)*/
+        // ширина = экран - (left + right)
+        // высота = пересчитанная + (top + bottom)
         let width = tableView.bounds.width - (imageViewInsets.left + imageViewInsets.right)
+        
+        guard image.size.width != 0 else {
+            return 0
+        }
+        // масштаб по ширине, чтобы сохранить пропорции картинки
         let scale = width / image.size.width
         return image.size.height * scale + (imageViewInsets.top + imageViewInsets.bottom)
         
