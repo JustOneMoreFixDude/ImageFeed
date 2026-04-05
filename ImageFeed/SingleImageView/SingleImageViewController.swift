@@ -3,6 +3,9 @@ import UIKit
 
 class SingleImageViewController: UIViewController {
     
+    @IBAction func didTapBackButton(_ sender: UIButton) {
+        dismiss(animated: true, completion: nil)
+    }
     var image: UIImage? {
         didSet {
             // проверяем загружено ли view
