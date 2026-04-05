@@ -2,6 +2,8 @@ import UIKit
 
 final class ImagesListViewController: UIViewController {
     
+    private let showSingleImageSegueIdentifier = "ShowSingleImage"
+    
     @IBOutlet private var tableView: UITableView!
     
     // создаем и заполняем массив с названиями фоток
@@ -18,6 +20,45 @@ final class ImagesListViewController: UIViewController {
         super.viewDidLoad()
         
         tableView.contentInset = UIEdgeInsets(top: 12, left: 0, bottom: 12, right: 0)
+    }
+    
+    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
+        if segue.identifier == showSingleImageSegueIdentifier {
+            guard
+                let viewController = segue.destination as? SingleImageViewController,
+                let indexPath = sender as? IndexPath
+            else {
+                assertionFailure("Invalid segue destination")
+                return
+            }
+            
+            let image = UIImage(named: photosName[indexPath.row])
+            
+            /*
+             ⚠️ Важно:
+             UIViewController загружает view лениво.
+             Пока view не загружена:
+             - IBOutlet = nil
+             - UI элементы недоступны
+
+             Поэтому перед работой с UI нужно убедиться, что view инициализирована.
+
+             Варианты:
+
+             1. Принудительно загрузить view:
+                _ = viewController.view
+                // или (предпочтительно)
+                viewController.loadViewIfNeeded()
+
+             2. Научить SingleViewController показывать картинки,
+                не инициируя загрузку view
+                Воспользоваться isViewLoaded 
+             */
+            
+            viewController.image = image
+        } else {
+            super.prepare(for: segue, sender: sender)
+        }
     }
 }
 
@@ -58,7 +99,10 @@ extension ImagesListViewController: UITableViewDelegate {
     
     // вызывается при тапе по ячейке
     // TODO: открыть экран с картинкой
-    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) { }
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        // осуществление перехода к экране
+        performSegue(withIdentifier: showSingleImageSegueIdentifier, sender: indexPath)
+    }
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         guard let image = UIImage(named: photosName[indexPath.row]) else {
