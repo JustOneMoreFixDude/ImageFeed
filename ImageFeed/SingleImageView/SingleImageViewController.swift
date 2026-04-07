@@ -37,6 +37,14 @@ class SingleImageViewController: UIViewController {
         imageView.frame.size = image.size // Задаём реальный размер imageView равный размеру картинки
         rescaleAndCenterImageInScrollView(image: image) // Масштабируем и центрируем картинку под размер экрана
         
+        
+        let doubleTapGesture = UITapGestureRecognizer(
+            target: self,
+            action: #selector(didDoubleTap(_:))
+        )
+        doubleTapGesture.numberOfTapsRequired = 2
+        
+        scrollView.addGestureRecognizer(doubleTapGesture)
     }
     
     // Закрываем экран (так как он показан модально)
@@ -53,6 +61,31 @@ class SingleImageViewController: UIViewController {
             applicationActivities: nil)
         
         present(activityViewController, animated: true)
+    }
+    
+    // Обрабатывает двойной тап по экрану и переключает зум
+    @objc private func didDoubleTap(_ gesture: UITapGestureRecognizer) {
+        let point = gesture.location(in: imageView)
+        
+        if scrollView.zoomScale > scrollView.minimumZoomScale {
+            scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
+        } else {
+            let zoomRect = zoomRectForScale(
+                scale: scrollView.maximumZoomScale,
+                center: point
+            )
+            scrollView.zoom(to: zoomRect, animated: true)
+        }
+    }
+    
+    // Считает какой кусок картинки нужно показать, чтобы получить нужный zoom
+    private func zoomRectForScale(scale: CGFloat, center: CGPoint) -> CGRect {
+        var zoomRect = CGRect()
+        zoomRect.size.height = scrollView.bounds.size.height / scale
+        zoomRect.size.width = scrollView.bounds.size.width / scale
+        zoomRect.origin.x = center.x - zoomRect.size.width / 2
+        zoomRect.origin.y = center.y - zoomRect.size.height / 2
+        return zoomRect
     }
     
     /*
