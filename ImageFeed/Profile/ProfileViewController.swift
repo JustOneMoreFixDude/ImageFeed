@@ -9,6 +9,7 @@ class ProfileViewController: UIViewController {
     @IBOutlet weak var descriptionLabel: UILabel!
     @IBOutlet weak var logoutButton: UIButton!
     
+    
     @IBAction func didTapLogoutButton(_ sender: UIButton) {
     }
     
