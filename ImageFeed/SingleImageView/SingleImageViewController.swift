@@ -37,7 +37,6 @@ class SingleImageViewController: UIViewController {
         imageView.frame.size = image.size // Задаём реальный размер imageView равный размеру картинки
         rescaleAndCenterImageInScrollView(image: image) // Масштабируем и центрируем картинку под размер экрана
         
-        
         let doubleTapGesture = UITapGestureRecognizer(
             target: self,
             action: #selector(didDoubleTap(_:))
@@ -153,23 +152,23 @@ extension SingleImageViewController: UIScrollViewDelegate {
     
     // Центрируем картинку после каждого изменения масштаба
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
-       /*
-        Cчитаем, сколько свободного места осталось по вертикали:
-        высота видимой области минус текущая высота картинки
-        делим на 2, чтобы распределить отступы сверху и снизу
-        max(..., 0) нужен, чтобы не получить отрицательные значения,
-        если картинка больше экрана (в этом случае inset = 0)
-       */
+        /*
+         Cчитаем, сколько свободного места осталось по вертикали:
+         высота видимой области минус текущая высота картинки
+         делим на 2, чтобы распределить отступы сверху и снизу
+         max(..., 0) нужен, чтобы не получить отрицательные значения,
+         если картинка больше экрана (в этом случае inset = 0)
+         */
         let verticalInset = max((scrollView.bounds.height - imageView.frame.height) / 2, 0)
         
         // то же самое по горизонтали: считаем свободное место слева и справа
         let horizontalInset = max((scrollView.bounds.width - imageView.frame.width) / 2, 0)
         
         /*
-        задаём внутренние отступы контента scrollView
-        таким образом создаём "пустое пространство" вокруг картинки,
-        чтобы она визуально оказалась по центру
-        */
+         задаём внутренние отступы контента scrollView
+         таким образом создаём "пустое пространство" вокруг картинки,
+         чтобы она визуально оказалась по центру
+         */
         scrollView.contentInset = UIEdgeInsets(
             top: verticalInset,      // отступ сверху
             left: horizontalInset,   // отступ слева
