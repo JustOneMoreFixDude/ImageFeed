@@ -99,4 +99,4 @@ iOSInjectionProject/
 
 # End of https://www.toptal.com/developers/gitignore/api/swift,xcode
 
-Constants.swift
+ImageFeed/Constants.swift
