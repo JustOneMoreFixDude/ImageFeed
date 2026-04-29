@@ -8,6 +8,7 @@ protocol WebViewViewControllerDelegate: AnyObject {
 
 final class WebViewViewController: UIViewController {
     @IBOutlet private var webView: WKWebView!
+    @IBOutlet private var progressView: UIProgressView!
     
     weak var delegate: WebViewViewControllerDelegate?
     
@@ -20,16 +21,47 @@ final class WebViewViewController: UIViewController {
         super.viewDidLoad()
         webView.navigationDelegate = self
         loadAuthView()
+        updateProgress()
     }
     
-    //
+    @IBAction private func didTapBackButton(_ sender: Any?) {
+        delegate?.webViewViewControllerDidCancel(self)
+    }
+    
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        webView.addObserver(
+            self,
+            forKeyPath: #keyPath(WKWebView.estimatedProgress),
+            options: .new,
+            context: nil
+        )
+        updateProgress()
+    }
+    
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        webView.removeObserver(self, forKeyPath: #keyPath(WKWebView.estimatedProgress), context: nil)
+    }
+    
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
+        if keyPath == #keyPath(WKWebView.estimatedProgress) {
+            updateProgress()
+        } else {
+            super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
+        }
+    }
+    
+    private func updateProgress() {
+        progressView.progress = Float(webView.estimatedProgress)
+        progressView.isHidden = fabs(webView.estimatedProgress - 1.0) <= 0.0001
+    }
+    
     private func loadAuthView() {
-        guard var urlComponents = URLComponents(string: Constants.unsplashAuthorizeURLString) else {
+        guard var urlComponents = URLComponents(string: Constants.API.unsplashAuthorizeURLString) else {
             return
         }
-        
         //print("<!!!1> urlComponents == \(urlComponents)")
-        
         urlComponents.queryItems = [
             URLQueryItem(name: "client_id", value: Constants.accessKey),
             URLQueryItem(name: "redirect_uri", value: Constants.redirectURI),
@@ -43,10 +75,12 @@ final class WebViewViewController: UIViewController {
         
         let request = URLRequest(url: url)
         webView.load(request)
-        
         //print("<!!!2> request == \(request)")
     }
 }
+
+
+
 
 extension WebViewViewController: WKNavigationDelegate {
     
