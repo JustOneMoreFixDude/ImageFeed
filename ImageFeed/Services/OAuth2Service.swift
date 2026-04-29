@@ -4,6 +4,8 @@ final class OAuth2Service {
     
     static let shared = OAuth2Service()
     private init() {}
+    
+    private let jsonDecoder = JSONDecoder()
 
     func makeOAuthTokenRequest(code: String) -> URLRequest? {
         guard var urlComponents = URLComponents(string: Constants.API.unsplashTokenURLString) else {
@@ -40,7 +42,7 @@ final class OAuth2Service {
             switch result {
             case .success(let data):
                 do {
-                    let responseBody = try JSONDecoder().decode(OAuthTokenResponseBody.self, from: data)
+                    let responseBody = try self.jsonDecoder.decode(OAuthTokenResponseBody.self, from: data)
                     OAuth2TokenStorage.shared.token = responseBody.accessToken
                     completion(.success(responseBody.accessToken))
                 } catch {
