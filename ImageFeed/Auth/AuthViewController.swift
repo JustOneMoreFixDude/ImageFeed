@@ -1,9 +1,12 @@
 import UIKit
+import ProgressHUD
 
+/* Делегат, через который AuthViewController сообщает наружу: авторизация прошла или отменена. */
 protocol AuthViewControllerDelegate: AnyObject {
     func didAuthenticate(_ vc: AuthViewController)
 }
 
+// Экран авторизации с WKWebView. Загружает страницу Unsplash OAuth
 final class AuthViewController: UIViewController {
     
     private let showWebViewSegueIdentifier = "ShowWebView"
@@ -43,7 +46,14 @@ final class AuthViewController: UIViewController {
 
 extension AuthViewController: WebViewViewControllerDelegate {
     func webViewViewController(_ vc: WebViewViewController, didAuthenticateWithCode code: String) {
+        
+        UIBlockingProgressHUD.show()
+        
         OAuth2Service.shared.fetchOAuthToken(code: code) { [weak self] result in
+            defer {
+                UIBlockingProgressHUD.dismiss()
+            }
+            
             switch result {
             case .success:
                 vc.dismiss(animated: true)

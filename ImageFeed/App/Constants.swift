@@ -1,8 +1,10 @@
 import Foundation
 
 enum Constants {
-    static let accessKey: String = "YOUR_ACCESS_KEY"
-    static let secretKey: String = "YOUR_SECRET_KEY"
+   
+    static let accessKey = Secrets.accessKey //Secrets.swift .gitignore
+    static let secretKey = Secrets.secretKey //Secrets.swift .gitignore
+    
     static let redirectURI: String = "urn:ietf:wg:oauth:2.0:oob"
     static let accessScope: String = "public+read_user+write_user+read_photos+write_photos+read_collections+write_collections"
     static let defaultBaseURLString: String = "https://api.unsplash.com"
@@ -10,4 +12,6 @@ enum Constants {
         static let unsplashAuthorizeURLString = "https://unsplash.com/oauth/authorize"
         static let unsplashTokenURLString = "https://unsplash.com/oauth/token"
     }
+    
+
 }

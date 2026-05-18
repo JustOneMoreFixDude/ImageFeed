@@ -1,15 +1,28 @@
 import UIKit
 
+/*
+ Первый экран. Проверяет: есть токен или нет.
+ Если токена нет — открывает авторизацию.
+ Если есть — пускает в приложение.
+ */
+
 final class SplashViewController: UIViewController {
 
     // Хранилище токена
     private let storage = OAuth2TokenStorage.shared
-
+    
     // Идентификатор segue в storyboard
     private let showAuthSegueIdentifier = "ShowAuthenticationScreen"
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        
+#if DEBUG
+        if UserDefaults.standard.bool(forKey: "didResetToken") == false {
+            storage.token = nil
+            UserDefaults.standard.set(true, forKey: "didResetToken")
+        }
+#endif
         
         // проверим есть ли токен (авторизация)
         if storage.token != nil {

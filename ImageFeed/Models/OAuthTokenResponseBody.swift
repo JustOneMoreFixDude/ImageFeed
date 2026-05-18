@@ -1,6 +1,5 @@
-import Foundation
-
 // Модель ответа сервера
+
 struct OAuthTokenResponseBody: Decodable {
     let accessToken: String
     

@@ -16,14 +16,42 @@ final class ProfileViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         setupProfileView()
+        fetchProfile()
     }
     
     // MARK: - Setup
     
-    func setupProfileView() {
+    private func setupProfileView() {
         setupViews()
         setupHierarchy()
         setupConstraints()
+    }
+    
+    private func fetchProfile() {
+        guard let token = OAuth2TokenStorage.shared.token else {
+            return
+        }
+
+        UIBlockingProgressHUD.show()
+
+        ProfileService.shared.fetchProfile(token: token) { [weak self] result in
+            defer {
+                UIBlockingProgressHUD.dismiss()
+            }
+            
+            switch result {
+            case .success(let profile):
+                self?.updateProfileDetails(profile: profile)
+            case .failure(let error):
+                print(error)
+            }
+        }
+    }
+    
+    private func updateProfileDetails(profile: Profile) {
+        nameLabel.text = profile.name
+        loginNameLabel.text = profile.loginName
+        descriptionLabel.text = profile.bio
     }
     
     private func setupViews() {
