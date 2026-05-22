@@ -12,12 +12,22 @@ final class ProfileViewController: UIViewController {
     private let logoutButton = UIButton(type: .system)
     private let labelsStackView = UIStackView()
     
+       
     // MARK: - Lifecycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
         setupProfileView()
-        fetchProfile()
+
+        //При создании берет уже сохранённый avatarURL
+        if let profile = ProfileService.shared.profile {
+            updateProfileDetails(profile: profile)}
+        
+        // Если потом avatarURL изменится - услышит notification
+        if let avatarURL = ProfileImageService.shared.avatarURL,
+           let url = URL(string: avatarURL) {
+            avatarImageView.kf.setImage(with: url)
+        }
         
         NotificationCenter.default.addObserver(
             self,
@@ -25,8 +35,6 @@ final class ProfileViewController: UIViewController {
             name: ProfileImageService.didChangeNotification,
             object: nil
         )
-        
-        
     }
     
     deinit {
@@ -41,43 +49,10 @@ final class ProfileViewController: UIViewController {
         setupConstraints()
     }
     
-    private func fetchProfile() {
-        guard let token = OAuth2TokenStorage.shared.token else {
-            return
-        }
-        
-        UIBlockingProgressHUD.show()
-        
-        ProfileService.shared.fetchProfile(token: token) { [weak self] result in
-            defer {
-                UIBlockingProgressHUD.dismiss()
-            }
-            
-            switch result {
-            case .success(let profile):
-                self?.updateProfileDetails(profile: profile)
-                self?.fetchProfileImageURL(username: profile.username)
-            case .failure(let error):
-                print(error)
-            }
-        }
-    }
-    
     private func updateProfileDetails(profile: Profile) {
         nameLabel.text = profile.name
         loginNameLabel.text = profile.loginName
         descriptionLabel.text = profile.bio
-    }
-    
-    private func fetchProfileImageURL(username: String) {
-        ProfileImageService.shared.fetchProfileImageURL(username: username) { [weak self] result in
-            switch result {
-            case .success(let avatarURL):
-                break
-            case .failure(let error):
-                print(error)
-            }
-        }
     }
     
     @objc private func updateAvatar(notification: Notification) {

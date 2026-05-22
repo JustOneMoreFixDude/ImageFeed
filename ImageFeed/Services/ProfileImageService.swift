@@ -4,7 +4,8 @@ final class ProfileImageService {
 
     private let urlSession = URLSession.shared
     private var task: URLSessionTask?
-
+    private(set) var avatarURL: String?
+    
     static let shared = ProfileImageService()
     
     static let didChangeNotification = Notification.Name(
@@ -17,6 +18,7 @@ final class ProfileImageService {
         assert(Thread.isMainThread) // убеждаемся, что на главном потоке
         
         if task != nil {
+            completion(.failure(NetworkError.invalidRequest))
             return
         }
         
@@ -41,7 +43,8 @@ final class ProfileImageService {
             switch result {
             case .success(let userResult):
                 let avatarURL = userResult.profileImage.small
-
+                
+                self.avatarURL = avatarURL
                 self.task = nil
 
                 NotificationCenter.default.post(

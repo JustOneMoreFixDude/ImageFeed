@@ -17,6 +17,7 @@ final class ProfileService {
         assert(Thread.isMainThread) // убеждаемся, что на главном потоке
 
         if task != nil {
+            completion(.failure(NetworkError.invalidRequest))
             return
         }
         
