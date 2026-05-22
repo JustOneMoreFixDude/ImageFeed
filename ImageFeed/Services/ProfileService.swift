@@ -1,8 +1,10 @@
 import Foundation
 
+/* Задача функции: сходить в интернет > получить JSON > превратить JSON в Swift объект */
+
 final class ProfileService {
 
-    private let jsonDecoder = JSONDecoder()
+    //private let jsonDecoder = JSONDecoder()
     private let urlSession = URLSession.shared
     private var task: URLSessionTask?
     
@@ -28,46 +30,30 @@ final class ProfileService {
 
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
 
-        let newTask = urlSession.dataTask(with: request) { [weak self] data, response, error in
+        let newTask = urlSession.objectTask(for: request) {
+            [weak self] (result: Result<ProfileResult, Error>) in
+            
             guard let self else { return }
-
-            if let error {
-                DispatchQueue.main.async {
-                    self.task = nil
-                    completion(.failure(error))
-                }
-                return
-            }
-
-            guard let data else {
-                DispatchQueue.main.async {
-                    self.task = nil
-                    completion(.failure(NSError(domain: "ProfileService", code: -1)))
-                }
-                return
-            }
-
-            do {
-                let profileResult = try self.jsonDecoder.decode(ProfileResult.self, from: data)
-                let name = "\(profileResult.firstName ?? "") \(profileResult.lastName ?? "")"
-                    .trimmingCharacters(in: .whitespaces)
-
+            
+            switch result {
+            case .success(let profileResult):
+                let name = "\(profileResult.firstName ?? "") \(profileResult.lastName ?? "")".trimmingCharacters(in: .whitespaces)
                 let newProfile = Profile(
                     username: profileResult.username,
                     name: name,
                     loginName: "@\(profileResult.username)",
                     bio: profileResult.bio ?? ""
                 )
-                DispatchQueue.main.async {
-                    self.profile = newProfile
-                    self.task = nil
-                    completion(.success(newProfile))
-                }
-            } catch {
-                DispatchQueue.main.async {
-                    self.task = nil
-                    completion(.failure(error))
-                }
+                
+                self.profile = newProfile
+                self.task = nil
+                
+                completion(.success(newProfile))
+                
+            case .failure(let error):
+                print("[ProfileService.fetchProfile]: \(error)")
+                self.task = nil
+                completion(.failure(error))
             }
         }
 

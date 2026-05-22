@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		822E841D2F9943FE00170ED1 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 822E841C2F9943FE00170ED1 /* WebKit.framework */; };
 		8280735E2FB39BDB004587D4 /* ProgressHUD in Frameworks */ = {isa = PBXBuildFile; productRef = 8280735D2FB39BDB004587D4 /* ProgressHUD */; };
+		829425A72FBCA29A00BC32E4 /* Kingfisher in Frameworks */ = {isa = PBXBuildFile; productRef = 829425A62FBCA29A00BC32E4 /* Kingfisher */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -42,6 +43,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				829425A72FBCA29A00BC32E4 /* Kingfisher in Frameworks */,
 				822E841D2F9943FE00170ED1 /* WebKit.framework in Frameworks */,
 				8280735E2FB39BDB004587D4 /* ProgressHUD in Frameworks */,
 			);
@@ -96,6 +98,7 @@
 			name = ImageFeed;
 			packageProductDependencies = (
 				8280735D2FB39BDB004587D4 /* ProgressHUD */,
+				829425A62FBCA29A00BC32E4 /* Kingfisher */,
 			);
 			productName = ImageFeed;
 			productReference = 82BDA0602F7A899200B8555F /* ImageFeed.app */;
@@ -127,6 +130,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				8280735C2FB39BDB004587D4 /* XCRemoteSwiftPackageReference "ProgressHUD" */,
+				829425A52FBCA29A00BC32E4 /* XCRemoteSwiftPackageReference "Kingfisher" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 82BDA0612F7A899200B8555F /* Products */;
@@ -168,7 +172,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4X3KD36CX2;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = ImageFeed/Info.plist;
+				INFOPLIST_FILE = ImageFeed/Resources/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -204,7 +208,7 @@
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 4X3KD36CX2;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = ImageFeed/Info.plist;
+				INFOPLIST_FILE = ImageFeed/Resources/Info.plist;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = Main;
@@ -384,6 +388,14 @@
 				version = 14.1.4;
 			};
 		};
+		829425A52FBCA29A00BC32E4 /* XCRemoteSwiftPackageReference "Kingfisher" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/onevcat/Kingfisher";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 8.9.0;
+			};
+		};
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
@@ -391,6 +403,11 @@
 			isa = XCSwiftPackageProductDependency;
 			package = 8280735C2FB39BDB004587D4 /* XCRemoteSwiftPackageReference "ProgressHUD" */;
 			productName = ProgressHUD;
+		};
+		829425A62FBCA29A00BC32E4 /* Kingfisher */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 829425A52FBCA29A00BC32E4 /* XCRemoteSwiftPackageReference "Kingfisher" */;
+			productName = Kingfisher;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

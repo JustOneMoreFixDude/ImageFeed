@@ -12,6 +12,8 @@ final class WebViewViewController: UIViewController {
     
     weak var delegate: WebViewViewControllerDelegate?
     
+    private var estimatedProgressObservation: NSKeyValueObservation?
+    
     // для меня
     deinit {
         print("\(String(describing: type(of: self))) помер")
@@ -21,7 +23,13 @@ final class WebViewViewController: UIViewController {
         super.viewDidLoad()
         webView.navigationDelegate = self
         loadAuthView()
-        updateProgress()
+        
+        estimatedProgressObservation = webView.observe(
+            \.estimatedProgress,
+             options: [.new]
+        ) { [weak self] _, _ in
+            self?.updateProgress()
+        }
     }
     
     @IBAction private func didTapBackButton(_ sender: Any?) {
@@ -30,27 +38,15 @@ final class WebViewViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        webView.addObserver(
-            self,
-            forKeyPath: #keyPath(WKWebView.estimatedProgress),
-            options: .new,
-            context: nil
-        )
+
         updateProgress()
     }
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        webView.removeObserver(self, forKeyPath: #keyPath(WKWebView.estimatedProgress), context: nil)
     }
     
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if keyPath == #keyPath(WKWebView.estimatedProgress) {
-            updateProgress()
-        } else {
-            super.observeValue(forKeyPath: keyPath, of: object, change: change, context: context)
-        }
-    }
+
     
     private func updateProgress() {
         progressView.progress = Float(webView.estimatedProgress)
@@ -85,12 +81,12 @@ final class WebViewViewController: UIViewController {
 extension WebViewViewController: WKNavigationDelegate {
     
     /*метод вызывается каждый раз когда webView шараёбится по ссылкам
-    Логика:  WebView переходит по ссылкам
-    → мы перехватываем каждую
-    → ищем там code
-    → если нашли — забираем и останавливаем переход
-    → если не нашли - продолжаем
-    */
+     Логика:  WebView переходит по ссылкам
+     → мы перехватываем каждую
+     → ищем там code
+     → если нашли — забираем и останавливаем переход
+     → если не нашли - продолжаем
+     */
     func webView(
         _ webView: WKWebView,
         decidePolicyFor navigationAction: WKNavigationAction,
@@ -121,5 +117,5 @@ extension WebViewViewController: WKNavigationDelegate {
             return nil
         }
     }
-
+    
 }

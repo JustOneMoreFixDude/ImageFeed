@@ -1,4 +1,5 @@
 import UIKit
+import Kingfisher
 
 final class ProfileViewController: UIViewController {
     
@@ -17,6 +18,19 @@ final class ProfileViewController: UIViewController {
         super.viewDidLoad()
         setupProfileView()
         fetchProfile()
+        
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateAvatar),
+            name: ProfileImageService.didChangeNotification,
+            object: nil
+        )
+        
+        
+    }
+    
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
     
     // MARK: - Setup
@@ -31,9 +45,9 @@ final class ProfileViewController: UIViewController {
         guard let token = OAuth2TokenStorage.shared.token else {
             return
         }
-
+        
         UIBlockingProgressHUD.show()
-
+        
         ProfileService.shared.fetchProfile(token: token) { [weak self] result in
             defer {
                 UIBlockingProgressHUD.dismiss()
@@ -42,6 +56,7 @@ final class ProfileViewController: UIViewController {
             switch result {
             case .success(let profile):
                 self?.updateProfileDetails(profile: profile)
+                self?.fetchProfileImageURL(username: profile.username)
             case .failure(let error):
                 print(error)
             }
@@ -53,6 +68,30 @@ final class ProfileViewController: UIViewController {
         loginNameLabel.text = profile.loginName
         descriptionLabel.text = profile.bio
     }
+    
+    private func fetchProfileImageURL(username: String) {
+        ProfileImageService.shared.fetchProfileImageURL(username: username) { [weak self] result in
+            switch result {
+            case .success(let avatarURL):
+                break
+            case .failure(let error):
+                print(error)
+            }
+        }
+    }
+    
+    @objc private func updateAvatar(notification: Notification) {
+        guard
+            let userInfo = notification.userInfo,
+            let avatarURL = userInfo["URL"] as? String,
+            let url = URL(string: avatarURL)
+        else {
+            return
+        }
+        
+        avatarImageView.kf.setImage(with: url)
+    }
+    
     
     private func setupViews() {
         avatarImageView.translatesAutoresizingMaskIntoConstraints = false

@@ -5,7 +5,6 @@ final class OAuth2Service {
     static let shared = OAuth2Service()
     private init() {}
     
-    private let jsonDecoder = JSONDecoder()
     private let urlSession = URLSession.shared
     private var task: URLSessionTask?
     private var lastCode: String?
@@ -35,10 +34,10 @@ final class OAuth2Service {
     
     
     func fetchOAuthToken(code: String, completion: @escaping (Result<String, Error>) -> Void) {
-
+        
         // UI should show loader before calling this service.
         // UIBlockingProgressHUD.show()
-
+        
         guard task == nil
         else {
             // UI should hide loader in completion.
@@ -56,7 +55,7 @@ final class OAuth2Service {
         }
         
         //task?.cancel() // we no longer need the old request
-
+        
         lastCode = code
         guard
             let request = makeOAuthTokenRequest(code: code)
@@ -67,7 +66,8 @@ final class OAuth2Service {
             return
         }
         
-        let newTask = urlSession.data(for: request) { [weak self] result in
+        let newTask = urlSession.objectTask(for: request) {
+            [weak self] (result: Result<OAuthTokenResponseBody, Error>) in
             
             // UI should hide loader in completion.
             // UIBlockingProgressHUD.dismiss()
@@ -78,17 +78,11 @@ final class OAuth2Service {
             self.lastCode = nil
             
             switch result {
-            case .success(let data):
-                do {
-                    let responseBody = try self.jsonDecoder.decode(OAuthTokenResponseBody.self, from: data)
-                    OAuth2TokenStorage.shared.token = responseBody.accessToken
-                    completion(.success(responseBody.accessToken))
-                } catch {
-                    print("Decoding error: \(error)")
-                    completion(.failure(NetworkError.decodingError(error)))
-                }
+            case .success(let responseBody):
+                OAuth2TokenStorage.shared.token = responseBody.accessToken
+                completion(.success(responseBody.accessToken))
             case .failure(let error):
-                print("Network error: \(error)")
+                print("[OAuth2Service.fetchOAuthToken]: \(error)")
                 completion(.failure(error))
             }
         }
