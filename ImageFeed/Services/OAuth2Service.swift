@@ -32,45 +32,27 @@ final class OAuth2Service {
         return request
     }
     
-    
     func fetchOAuthToken(code: String, completion: @escaping (Result<String, Error>) -> Void) {
-        
-        // UI should show loader before calling this service.
-        // UIBlockingProgressHUD.show()
-        
-        guard task == nil
-        else {
-            // UI should hide loader in completion.
-            // UIBlockingProgressHUD.dismiss()
-            completion(.failure(NetworkError.invalidRequest))
-            return
-        }
-        
+              
         guard lastCode != code
         else {
-            // UI should hide loader in completion.
-            // UIBlockingProgressHUD.dismiss()
             completion(.failure(NetworkError.invalidRequest))
             return
         }
         
-        //task?.cancel() // we no longer need the old request
+        task?.cancel()
+        task = nil
         
         lastCode = code
         guard
             let request = makeOAuthTokenRequest(code: code)
         else {
-            // UI should hide loader in completion.
-            // UIBlockingProgressHUD.dismiss()
             completion(.failure(NetworkError.invalidRequest))
             return
         }
         
         let newTask = urlSession.objectTask(for: request) {
             [weak self] (result: Result<OAuthTokenResponseBody, Error>) in
-            
-            // UI should hide loader in completion.
-            // UIBlockingProgressHUD.dismiss()
             
             guard let self else { return }
             

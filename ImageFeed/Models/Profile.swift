@@ -1,8 +1,8 @@
-// JSON для UI
+// Данные профиля пользователя Unsplash
 
 struct Profile {
-    let username: String
-    let name: String
-    let loginName: String
-    let bio: String
+    let username: String      // username
+    let name: String          // имя пользователя
+    let loginName: String     // @username
+    let bio: String           // описание профиля
 }
