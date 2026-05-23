@@ -1,5 +1,6 @@
 import Foundation
 
+// Ошибки сетевого слоя приложения
 enum NetworkError: Error {
     case httpStatusCode(Int)
     case urlRequestError(Error)
@@ -17,6 +18,7 @@ enum NetworkError: Error {
  > возвращает Data*/
 
 extension URLSession {
+    // Выполняет URLRequest, проверяет сетевые ошибки и возвращает Data
     func data(
         for request: URLRequest,
         completion: @escaping (Result<Data, Error>) -> Void
@@ -57,7 +59,7 @@ extension URLSession {
         return task
     }
     
-    
+    // Выполняет URLRequest и декодирует ответ в Decodable модель
     func objectTask<T: Decodable>(
         for request: URLRequest,
         completion: @escaping (Result<T, Error>) -> Void

@@ -9,6 +9,7 @@ final class OAuth2Service {
     private var task: URLSessionTask?
     private var lastCode: String?
     
+    // Создает POST запрос для получения OAuth token от Unsplash
     func makeOAuthTokenRequest(code: String) -> URLRequest? {
         guard var urlComponents = URLComponents(string: Constants.API.unsplashTokenURLString) else {
             return nil
@@ -32,6 +33,7 @@ final class OAuth2Service {
         return request
     }
     
+    // Выполняет запрос OAuth token и сохраняет access token в хранилище
     func fetchOAuthToken(code: String, completion: @escaping (Result<String, Error>) -> Void) {
               
         guard lastCode != code
@@ -55,6 +57,11 @@ final class OAuth2Service {
             [weak self] (result: Result<OAuthTokenResponseBody, Error>) in
             
             guard let self else { return }
+
+            // Старый отменённый запрос, если всё-таки вернётся в completion, ничего не сломает
+            guard self.lastCode == code else {
+                return
+            }
             
             self.task = nil
             self.lastCode = nil
