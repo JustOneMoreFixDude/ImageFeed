@@ -4,7 +4,6 @@ import Foundation
 
 final class ProfileService {
 
-    //private let jsonDecoder = JSONDecoder()
     private let urlSession = URLSession.shared
     private var task: URLSessionTask?
     
