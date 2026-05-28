@@ -1,59 +1,69 @@
 import Foundation
 import UIKit
 
-// Комментарий для ревьюера: брат/сестра, я намеренно написал подробные комменты, без них я плаваю
-// ну и в целом это учебный проект. Уверен, что когда я стану таким же мощным, как ты
-// я от этой привычки избавлюсь
 
-
-// Контроллер для показа одной картинки с возможностью зума и шаринга
+// Экран просмотра одной фотографии.
+// Позволяет приблизить картинку двойным тапом и поделиться ей.
 class SingleImageViewController: UIViewController {
     
-    // ScrollView используется для зума и скролла картинки
+    // ScrollView нужен для зума и перемещения картинки.
     @IBOutlet weak var scrollView: UIScrollView!
     
-    // UIImageView, в котором отображается картинка (private, чтобы не трогали снаружи)
-    @IBOutlet private var imageView: UIImageView! // private, ибо вызов imageView.image извне = падение
+    // ImageView показывает выбранную фотографию.
+    @IBOutlet private var imageView: UIImageView!
     
     
-    // Картинка, которую передаёт предыдущий экран
+    // Картинка, которую передаёт экран ленты.
+    // Когда она меняется, обновляем imageView.
     var image: UIImage? {
         didSet {
-            // Если view ещё не загружена — не трогаем UI (imageView ещё nil)
-            guard isViewLoaded else { return } // пиздец коненку: аутлет ещё не инициализирован
+            guard isViewLoaded else { return }
+            guard let image else { return }
+
+            imageView.image = image
+            imageView.frame.size = image.size
+            rescaleAndCenterImageInScrollView(image: image)
         }
     }
     
+    // Вызывается после загрузки экрана.
+    // Настраивает zoom, двойной тап и показывает картинку, если она уже есть.
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Настраиваем границы зума
+        // Настраиваем минимальный и максимальный zoom.
         scrollView.minimumZoomScale = 1
         scrollView.maximumZoomScale = 1.25
-        
-        guard let image else { return }
-        
-        imageView.image = image // Устанавливаем картинку в imageView
-        imageView.frame.size = image.size // Задаём реальный размер imageView равный размеру картинки
-        rescaleAndCenterImageInScrollView(image: image) // Масштабируем и центрируем картинку под размер экрана
-        
+
+        // Добавляем двойной тап для приближения и отдаления картинки.
         let doubleTapGesture = UITapGestureRecognizer(
             target: self,
             action: #selector(didDoubleTap(_:))
         )
         doubleTapGesture.numberOfTapsRequired = 2
-        
         scrollView.addGestureRecognizer(doubleTapGesture)
+        
+        // Если картинка уже передана — сразу показываем её.
+        guard let image else { return }
+        
+        // Показываем картинку.
+        imageView.image = image
+        // Задаём imageView размер исходной картинки.
+        imageView.frame.size = image.size
+        // Масштабируем и центрируем картинку на экране.
+        rescaleAndCenterImageInScrollView(image: image)
+        
+
     }
     
-    // Закрываем экран (так как он показан модально)
+    // Закрывает экран просмотра картинки.
     @IBAction func didTapBackButton(_ sender: UIButton) {
         dismiss(animated: true, completion: nil)
     }
     
-    // Открываем системное окно шеринга (AirDrop, Messages и т.д.)
+    // Открывает системное меню «Поделиться».
     @IBAction func didTapShareButton(_ sender: Any) {
-        // Проверяем, что image совпадает с тем, что отображается
+        // Проверяем, что картинка есть и совпадает с отображаемой.
         guard image == imageView.image else { return }
         let activityViewController = UIActivityViewController(
             activityItems: [image],
@@ -62,10 +72,13 @@ class SingleImageViewController: UIViewController {
         present(activityViewController, animated: true)
     }
     
-    // Обрабатывает двойной тап по экрану и переключает зум
+    // Обрабатывает двойной тап: приближает или возвращает исходный масштаб.
     @objc private func didDoubleTap(_ gesture: UITapGestureRecognizer) {
+        // Точка, по которой пользователь тапнул.
         let point = gesture.location(in: imageView)
         
+        // Если картинка уже приближена — уменьшаем её обратно.
+        // Иначе приближаем к месту двойного тапа.
         if scrollView.zoomScale > scrollView.minimumZoomScale {
             scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
         } else {
@@ -77,8 +90,9 @@ class SingleImageViewController: UIViewController {
         }
     }
     
-    // Считает какой кусок картинки нужно показать, чтобы получить нужный zoom
+    // Считает область, к которой нужно приблизить картинку.
     private func zoomRectForScale(scale: CGFloat, center: CGPoint) -> CGRect {
+        // Создаём прямоугольник zoom-области.
         var zoomRect = CGRect()
         zoomRect.size.height = scrollView.bounds.size.height / scale
         zoomRect.size.width = scrollView.bounds.size.width / scale
@@ -87,93 +101,81 @@ class SingleImageViewController: UIViewController {
         return zoomRect
     }
     
-    /*
-     rescaleAndCenterImageInScrollView изменяет скейл у scrollView так,
-     чтобы картинка занимала по возможности весь экран,
-     а её центр совпадал с центром экрана.
-     */
+    // Подбирает масштаб так, чтобы картинка поместилась на экран,
+    // и центрирует её внутри scrollView.
     private func rescaleAndCenterImageInScrollView(image: UIImage) {
         
-        // текущие ограничения зума
-        let minZoomScale = scrollView.minimumZoomScale // минимально разрешённый зум (0.1)
-        let maxZoomScale = scrollView.maximumZoomScale // максимально разрешённый зум (1.25)
+        // Текущие ограничения zoom.
+        let minZoomScale = scrollView.minimumZoomScale
+        let maxZoomScale = scrollView.maximumZoomScale
         
-        // Обновляем layout, чтобы получить актуальные размеры scrollView
+        // Обновляем layout, чтобы получить актуальный размер scrollView.
         view.layoutIfNeeded()
         
-        // Размер области, которую видит пользователь
+        // Размер видимой области.
         let visibleRectSize = scrollView.bounds.size
         
-        // Исходный размер картинки
-        let imageSize = image.size // реальный размер картинки
+        // Реальный размер картинки.
+        let imageSize = image.size
         
-        // Масштаб, при котором картинка влезет по ширине
+        // Масштаб, при котором картинка помещается по ширине.
         let hScale = visibleRectSize.width / imageSize.width
         
-        // Масштаб, при котором картинка влезет по высоте
+        // Масштаб, при котором картинка помещается по высоте.
         let vScale = visibleRectSize.height / imageSize.height
         
-        // Масштаб реальный
+        // Берём меньший масштаб, чтобы картинка целиком поместилась на экран.
         let scaleToFit = min(hScale, vScale)
         
-        // Выбираем масштаб, чтобы картинка полностью поместилась,
-        // но не выходила за допустимые границы zoom
+        // Ограничиваем масштаб разрешёнными значениями scrollView.
         let scale = min(maxZoomScale, max(minZoomScale, min(hScale, vScale)))
         
-        // Не даём уменьшить картинку меньше, чем она помещается на экран
+        // Минимальный zoom делаем равным масштабу, при котором картинка помещается на экран.
         scrollView.minimumZoomScale = scaleToFit
         
-        // Применяем начальный масштаб
+        // Применяем стартовый масштаб.
         scrollView.setZoomScale(scale, animated: false)
         
-        // Обновляем layout после изменения масштаба
+        // Обновляем layout после изменения zoom.
         scrollView.layoutIfNeeded()
         
-        // Размер контента после масштабирования
+        // Размер контента после масштабирования.
         let newContentSize = scrollView.contentSize
         
-        // Смещение по X, чтобы центр картинки совпал с центром экрана
+        // Смещение по X для центрирования картинки.
         let x = (newContentSize.width - visibleRectSize.width) / 2
         
-        // Смещение по Y
+        // Смещение по Y для центрирования картинки.
         let y = (newContentSize.height - visibleRectSize.height) / 2
         
-        // Применяем смещение — центрируем картинку
+        // Применяем смещение.
         scrollView.setContentOffset(CGPoint(x: x, y: y), animated: false)
     }
 }
 
 
+// MARK: - UIScrollViewDelegate
 extension SingleImageViewController: UIScrollViewDelegate {
-    // Указываем, какую view нужно зумить (в нашем случае imageView)
+    // Сообщает scrollView, какую view нужно зумить.
     func viewForZooming(in scrollView: UIScrollView) -> UIView? {
         return imageView
     }
     
-    // Центрируем картинку после каждого изменения масштаба
+    // Центрирует картинку после изменения zoom.
     func scrollViewDidZoom(_ scrollView: UIScrollView) {
-        /*
-         Cчитаем, сколько свободного места осталось по вертикали:
-         высота видимой области минус текущая высота картинки
-         делим на 2, чтобы распределить отступы сверху и снизу
-         max(..., 0) нужен, чтобы не получить отрицательные значения,
-         если картинка больше экрана (в этом случае inset = 0)
-         */
+        // Считаем свободное место сверху и снизу.
+        // max(..., 0) защищает от отрицательных отступов.
         let verticalInset = max((scrollView.bounds.height - imageView.frame.height) / 2, 0)
         
-        // то же самое по горизонтали: считаем свободное место слева и справа
+        // Считаем свободное место слева и справа.
         let horizontalInset = max((scrollView.bounds.width - imageView.frame.width) / 2, 0)
         
-        /*
-         задаём внутренние отступы контента scrollView
-         таким образом создаём "пустое пространство" вокруг картинки,
-         чтобы она визуально оказалась по центру
-         */
+        // Добавляем отступы, чтобы картинка оставалась по центру.
         scrollView.contentInset = UIEdgeInsets(
-            top: verticalInset,      // отступ сверху
-            left: horizontalInset,   // отступ слева
-            bottom: verticalInset,   // отступ снизу (тот же, чтобы центр был симметричный)
-            right: horizontalInset   // отступ справа
+            top: verticalInset,
+            left: horizontalInset,
+            bottom: verticalInset,
+            right: horizontalInset
         )
     }
 }

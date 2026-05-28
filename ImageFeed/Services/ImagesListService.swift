@@ -51,7 +51,7 @@ final class ImagesListService {
         let nextPage = (lastLoadedPage ?? 0) + 1
         
         // Защита от повторного запроса.
-        // Например, willDisplay может сработать несколько раз подряд.
+        // Например, willDisplay(в ImagesListViewController) может сработать несколько раз подряд.
         if task != nil {
             completion(.failure(NetworkError.invalidRequest))
             return

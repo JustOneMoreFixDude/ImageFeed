@@ -1,27 +1,17 @@
 import UIKit
+import Kingfisher
 
-// Контроллер экрана со списком фотографий.
-// Он отвечает за:
-// - показ таблицы с фотографиями;
-// - настройку каждой ячейки таблицы;
-// - обработку тапа по фото;
-// - переход на экран просмотра одной большой картинки.
+// Экран ленты фотографий.
+// Показывает список фото, загружает новые страницы и открывает выбранную картинку.
 final class ImagesListViewController: UIViewController {
     
-    // Identifier segue из Storyboard.
-    // По нему мы понимаем, какой переход нужно выполнить.
+    // Identifier перехода на экран большой картинки из Storyboard.
     private let showSingleImageSegueIdentifier = "ShowSingleImage"
     
-    // Таблица на экране, в которой показываются фотографии.
-    // IBOutlet связывает этот код с Table View в Storyboard.
+    // Таблица, в которой отображается лента фотографий.
     @IBOutlet private var tableView: UITableView!
-    
-    // Временный массив с названиями картинок из Assets.
-    // Сейчас фото берутся не из интернета, а из локальных ресурсов приложения.
-    private let photosName: [String] = Array(0..<20).map{"\($0)"}
-    
-    // Форматтер даты для красивого текста в ячейке.
-    // lazy значит: он создастся только тогда, когда впервые понадобится.
+        
+    // Форматирует дату фотографии для показа в ячейке.
     private lazy var dateFormatter: DateFormatter = {
         let formatter = DateFormatter()
         formatter.dateStyle = .long
@@ -29,25 +19,39 @@ final class ImagesListViewController: UIViewController {
         return formatter
     }()
     
-    // Вызывается один раз, когда экран загрузился в память.
-    // Здесь обычно делают первичную настройку UI.
+    // Фотографии, которые сейчас показывает таблица.
+    // После загрузки новых данных массив обновляется из ImagesListService.
+    private var photos: [Photo] = []
+    
+    // Вызывается один раз после загрузки экрана.
+    // Здесь настраиваем таблицу, подписываемся на обновления и запускаем первую загрузку фото.
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        // Добавляем отступы сверху и снизу у таблицы,
-        // чтобы первая и последняя ячейка не прилипали к краям экрана.
+        // Добавляем отступы сверху и снизу у таблицы.
         tableView.contentInset = UIEdgeInsets(top: 12, left: 0, bottom: 12, right: 0)
+        
+        // Подписываемся на уведомление о загрузке новых фотографий.
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(updateTableViewAnimated),
+            name: ImagesListService.didChangeNotification,
+            object: nil
+        )
+        
+        // Загружаем первую страницу фотографий.
+        ImagesListService.shared.fetchPhotosNextPage(
+            token: OAuth2TokenStorage.shared.token ?? ""
+        ) { _ in }
         
     }
     
-    
-    // Вызывается перед переходом на другой экран через segue.
-    // Здесь мы передаём данные из списка фотографий на экран одной картинки.
+    // Вызывается перед переходом на экран большой картинки.
+    // Здесь находим выбранное фото и загружаем его большую версию.
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Проверяем, что это именно переход на экран SingleImageViewController.
+        // Проверяем, что это нужный segue.
         if segue.identifier == showSingleImageSegueIdentifier {
-            // Достаём экран назначения и indexPath выбранной ячейки.
-            // Если что-то пошло не так — дальше идти нельзя.
+            // Получаем экран назначения и индекс выбранной ячейки.
             guard
                 let viewController = segue.destination as? SingleImageViewController,
                 let indexPath = sender as? IndexPath
@@ -56,64 +60,73 @@ final class ImagesListViewController: UIViewController {
                 return
             }
             
-            // Берём картинку из Assets по номеру выбранной строки.
-            let image = UIImage(named: photosName[indexPath.row])
+            // Берём выбранную фотографию.
+            let photo = photos[indexPath.row]
             
-            /*
-             Важно:
-             UIViewController загружает view лениво.
-             Пока view не загружена:
-             - IBOutlet = nil
-             - UI элементы недоступны
-
-             Поэтому перед работой с UI нужно убедиться, что view инициализирована.
-
-             Варианты:
-
-             1. Принудительно загрузить view:
-                _ = viewController.view
-                // или (предпочтительно)
-                viewController.loadViewIfNeeded()
-
-             2. Научить SingleViewController показывать картинки,
-                не инициируя загрузку view
-                Воспользоваться isViewLoaded
-             */
+            // Получаем URL большой картинки.
+            guard let url = URL(string: photo.largeImageURL) else {
+                return
+            }
             
-            // Передаём выбранную картинку на следующий экран.
-            viewController.image = image
+            // Загружаем большую картинку и передаём её на следующий экран.
+            KingfisherManager.shared.retrieveImage(with: url) { result in
+                switch result {
+                case .success(let value):
+                    viewController.image = value.image
+                case .failure(let error):
+                    print("[ImagesListViewController.prepare]: \(error)")
+                }
+            }
         } else {
             super.prepare(for: segue, sender: sender)
+        }
+        
+    }
+    
+    // Вызывается, когда ImagesListService сообщил о новых фотографиях.
+    // Добавляет новые строки в таблицу с анимацией.
+    @objc private func updateTableViewAnimated() {
+        // Сколько фото было на экране до обновления.
+        let oldCount = photos.count
+        // Забираем актуальный массив из сервиса.
+        let newPhotos = ImagesListService.shared.photos
+        // Сколько фото стало после загрузки.
+        let newCount = newPhotos.count
+        // Обновляем локальный массив, из которого питается таблица.
+        photos = newPhotos
+        // Создаём индексы только для новых строк.
+        if oldCount != newCount {
+            let indexPaths = (oldCount..<newCount).map {
+                IndexPath(row: $0, section: 0)
+            }
+            // Анимированно вставляем новые строки в таблицу.
+            tableView.performBatchUpdates {
+                tableView.insertRows(at: indexPaths, with: .automatic)
+            }
         }
     }
 }
 
 // MARK: - UITableViewDataSource
 
-// DataSource отвечает на вопрос: "что показывать в таблице?"
-// Здесь мы говорим таблице:
-// - сколько будет строк;
-// - какую ячейку показать для каждой строки.
+// DataSource говорит таблице, сколько строк показать и какие ячейки использовать.
 extension ImagesListViewController: UITableViewDataSource {
-    // Возвращает количество строк в таблице.
-    // У нас строк столько же, сколько картинок в массиве photosName.
+    // Количество строк равно количеству загруженных фотографий.
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        photosName.count
+        photos.count
     }
     
-    // Создаёт и настраивает ячейку для конкретной строки таблицы.
-    // indexPath.row — это номер строки.
+    // Создаёт и настраивает ячейку для конкретной строки.
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-        // Переиспользуем готовую ячейку из Storyboard по её reuseIdentifier.
-        // Так таблица работает быстрее и не создаёт новые ячейки бесконечно.
+        // Берём переиспользуемую ячейку из Storyboard.
         let cell = tableView.dequeueReusableCell(withIdentifier: ImagesListCell.reuseIdentifier, for: indexPath)
         
-        // Проверяем, что получили именно нашу кастомную ячейку ImagesListCell.
+        // Проверяем, что это наша кастомная ячейка.
         guard let imageListCell = cell as? ImagesListCell else {
             return UITableViewCell()
         }
         
-        // Передаём ячейку в отдельную функцию настройки.
+        // Настраиваем содержимое ячейки.
         configCell(for: imageListCell, with: indexPath)
         return imageListCell
     }
@@ -121,28 +134,39 @@ extension ImagesListViewController: UITableViewDataSource {
 
 // MARK: - Cell configuration
 
-// Отдельный extension для вспомогательных методов настройки ячеек.
+// Вспомогательные методы для настройки ячеек.
 extension ImagesListViewController {
-    // Настраивает конкретную ячейку:
-    // - ставит картинку;
-    // - ставит дату;
-    // - ставит иконку лайка.
+    // Заполняет ячейку данными конкретной фотографии.
     private func configCell(for cell: ImagesListCell, with indexPath: IndexPath) {
-        // Пытаемся найти картинку в Assets.
-        // Если картинки нет — просто выходим из функции.
-        guard let image = UIImage(named: photosName[indexPath.row]) else {
+   
+        // Берём фотографию для этой строки.
+        let photo = photos[indexPath.row]
+        
+        // Получаем URL маленькой картинки для ленты.
+        guard let url = URL(string: photo.thumbImageURL) else {
             return
         }
+
+        // Показываем индикатор, пока картинка загружается.
+        cell.cellImage.kf.indicatorType = .activity
+        // Загружаем картинку и обновляем высоту ячейки после загрузки.
+        cell.cellImage.kf.setImage(with: url) { [weak self] _ in
+            self?.tableView.reloadRows(at: [indexPath], with: .automatic)
+        }
         
-        // Показываем картинку внутри ячейки.
-        cell.cellImage.image = image
-        // Показываем текущую дату в label ячейки.
-        cell.dateLabel.text = dateFormatter.string(from: Date())
+        // Показываем дату создания фотографии.
+        if let createdAt = photo.createdAt {
+            cell.dateLabel.text = dateFormatter.string(from: createdAt)
+        } else {
+            cell.dateLabel.text = ""
+        }
         
-        // Для тренировки: у чётных строк показываем активный лайк,
-        // у нечётных — неактивный.
-        let likeImage = indexPath.row % 2 == 0 ? UIImage(named: "like_button_on") : UIImage(named: "like_button_off")
-        // Ставим нужную картинку на кнопку лайка.
+        // Показываем состояние лайка.
+        let likeImage = photo.isLiked
+            ? UIImage(named: "like_button_on")
+            : UIImage(named: "like_button_off")
+        
+        // Устанавливаем иконку лайка на кнопку.
         cell.likeButton.setImage(likeImage, for: .normal)
     }
 }
@@ -150,71 +174,43 @@ extension ImagesListViewController {
 
 // MARK: - UITableViewDelegate
 
-// Delegate отвечает на вопрос: "что делать, когда пользователь взаимодействует с таблицей?"
-// Здесь мы обрабатываем тап по ячейке и задаём высоту ячеек.
+// Delegate отвечает за действия пользователя, высоту ячеек и подгрузку новых страниц.
 extension ImagesListViewController: UITableViewDelegate {
     
-    // Вызывается, когда пользователь нажал на ячейку таблицы.
+    // Вызывается при нажатии на ячейку.
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        // Запускаем segue на экран большой картинки.
-        // В sender передаём indexPath, чтобы prepare(for:) понял, какую картинку открыть.
+        // Открываем экран большой картинки и передаём индекс выбранной строки.
         performSegue(withIdentifier: showSingleImageSegueIdentifier, sender: indexPath)
     }
     
-    // Возвращает высоту ячейки для конкретной строки.
-    // Высота считается по пропорциям картинки, чтобы фото не растягивалось криво.
+    // Считает высоту ячейки по пропорциям фотографии.
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
-        // Берём картинку, чтобы узнать её реальный размер.
-        // Если картинки нет — высота будет 0.
-        guard let image = UIImage(named: photosName[indexPath.row]) else {
-            return 0
-        }
+        // Берём фото для текущей строки.
+        let photo = photos[indexPath.row]
+
         // Отступы картинки внутри ячейки.
         let imageViewInsets = UIEdgeInsets(top: 4, left: 16, bottom: 4, right: 16)
-        
-        // ширина = экран - (left + right)
-        // высота = пересчитанная + (top + bottom)
-        let width = tableView.bounds.width - (imageViewInsets.left + imageViewInsets.right)
-        
-        // Защита от деления на ноль.
-        guard image.size.width != 0 else {
-            return 0
-        }
-        // Считаем масштаб по ширине, чтобы сохранить пропорции картинки.
-        let scale = width / image.size.width
-        // Итоговая высота = высота картинки после масштабирования + вертикальные отступы.
-        return image.size.height * scale + (imageViewInsets.top + imageViewInsets.bottom)
-        
+        // Доступная ширина для картинки.
+        let imageViewWidth = tableView.bounds.width - imageViewInsets.left - imageViewInsets.right
+
+        // Масштаб, который сохраняет пропорции фотографии.
+        let scale = imageViewWidth / photo.size.width
+        // Итоговая высота ячейки: высота картинки + вертикальные отступы.
+        return photo.size.height * scale + imageViewInsets.top + imageViewInsets.bottom
     }
-}
-
-
-extension  ImagesListViewController {
     
-    // Метод вызывается прямо перед тем, как ячейка таблицы будет показана на экране
-    // willDisplay может вызываться много раз, поэтому сервис обязан уметь защищаться от повторных запросов.
+    // Вызывается перед показом ячейки.
+    // Если это последняя строка, просим сервис загрузить следующую страницу.
     func tableView(
         _ tableView: UITableView,
         willDisplay cell: UITableViewCell,
         forRowAt indexPath: IndexPath
     ) {
-        //        if indexPath.row + 1 == photos.count {
-        //            // TO DO: тут вызываем fetchPhotosNextPage()
-        //        }
-            
-            
-            
-            
-            
-        // Для проверки:
-        // когда появляется первая ячейка — запускаем загрузку фото
-        // и печатаем результат в консоль.
-//        if indexPath.row == 0 {
-//            ImagesListService.shared.fetchPhotosNextPage(token: OAuth2TokenStorage.shared.token ?? "") { result in
-//                print(result)
-//            }
-//        }
-        
-        
+        // Проверяем, дошёл ли пользователь до конца списка.
+        if indexPath.row + 1 == photos.count {
+            ImagesListService.shared.fetchPhotosNextPage(
+                token: OAuth2TokenStorage.shared.token ?? ""
+            ) { _ in }
+        }
     }
 }
