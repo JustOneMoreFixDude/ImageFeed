@@ -1,5 +1,6 @@
 import Foundation
 import UIKit
+import Kingfisher
 
 
 // Экран просмотра одной фотографии.
@@ -12,19 +13,9 @@ class SingleImageViewController: UIViewController {
     // ImageView показывает выбранную фотографию.
     @IBOutlet private var imageView: UIImageView!
     
-    
-    // Картинка, которую передаёт экран ленты.
-    // Когда она меняется, обновляем imageView.
-    var image: UIImage? {
-        didSet {
-            guard isViewLoaded else { return }
-            guard let image else { return }
-
-            imageView.image = image
-            imageView.frame.size = image.size
-            rescaleAndCenterImageInScrollView(image: image)
-        }
-    }
+    // URL полноразмерной картинки.
+    // Передаётся из экрана ленты через prepare.
+    var imageURL: URL?
     
     // Вызывается после загрузки экрана.
     // Настраивает zoom, двойной тап и показывает картинку, если она уже есть.
@@ -42,33 +33,91 @@ class SingleImageViewController: UIViewController {
         )
         doubleTapGesture.numberOfTapsRequired = 2
         scrollView.addGestureRecognizer(doubleTapGesture)
-        
-        // Если картинка уже передана — сразу показываем её.
-        guard let image else { return }
-        
-        // Показываем картинку.
-        imageView.image = image
-        // Задаём imageView размер исходной картинки.
-        imageView.frame.size = image.size
-        // Масштабируем и центрируем картинку на экране.
-        rescaleAndCenterImageInScrollView(image: image)
-        
 
+        loadImage()
+        
+    }
+    
+    // Загружает полноразмерную картинку по URL.
+    // Показывает лоадер и обрабатывает ошибки загрузки.
+    private func loadImage() {
+        // Без URL загружать нечего.
+        guard let imageURL else { return }
+        
+        //проверка работы алерта
+        //guard let imageURL = URL(string: "https://broken-url") else { return }
+
+        // Показываем индикатор загрузки.
+        UIBlockingProgressHUD.show()
+
+        // Kingfisher скачивает картинку и помещает её в imageView.
+        imageView.kf.setImage(with: imageURL) { [weak self] result in
+            // Загрузка завершилась — скрываем индикатор.
+            UIBlockingProgressHUD.dismiss()
+
+            guard let self else { return }
+
+            switch result {
+            // Картинка успешно загружена.
+            case .success(let imageResult):
+                // Обновляем размер imageView под реальный размер картинки.
+                self.imageView.frame.size = imageResult.image.size
+                // Подбираем масштаб и центрируем изображение.
+                self.rescaleAndCenterImageInScrollView(image: imageResult.image)
+
+            // Не удалось загрузить картинку.
+            case .failure:
+                print("Failed to load full image")
+                // Предлагаем пользователю повторить загрузку.
+                self.showError()
+            }
+        }
+    }
+    
+    // Показывает сообщение об ошибке загрузки картинки.
+    private func showError() {
+        let alert = UIAlertController(
+            title: "Что-то пошло не так",
+            message: "Попробовать ещё раз?",
+            preferredStyle: .alert
+        )
+
+        let cancelAction = UIAlertAction(
+            title: "Не надо",
+            style: .cancel
+        )
+
+        // Повторяем попытку загрузки.
+        let retryAction = UIAlertAction(
+            title: "Повторить",
+            style: .default
+        ) { [weak self] _ in
+            // Повторно запускаем загрузку картинки.
+            self?.loadImage()
+        }
+
+        alert.addAction(cancelAction)
+        alert.addAction(retryAction)
+
+        present(alert, animated: true)
     }
     
     // Закрывает экран просмотра картинки.
     @IBAction func didTapBackButton(_ sender: UIButton) {
+        // Возвращаемся к экрану ленты.
         dismiss(animated: true, completion: nil)
     }
     
     // Открывает системное меню «Поделиться».
     @IBAction func didTapShareButton(_ sender: Any) {
-        // Проверяем, что картинка есть и совпадает с отображаемой.
-        guard image == imageView.image else { return }
+        // Проверяем, что картинка уже загружена.
+        guard let image = imageView.image else { return }
+
         let activityViewController = UIActivityViewController(
             activityItems: [image],
-            applicationActivities: nil)
-        
+            applicationActivities: nil
+        )
+        // Показываем системное меню «Поделиться».
         present(activityViewController, animated: true)
     }
     
@@ -82,6 +131,7 @@ class SingleImageViewController: UIViewController {
         if scrollView.zoomScale > scrollView.minimumZoomScale {
             scrollView.setZoomScale(scrollView.minimumZoomScale, animated: true)
         } else {
+            // Вычисляем область, к которой нужно приблизиться.
             let zoomRect = zoomRectForScale(
                 scale: scrollView.maximumZoomScale,
                 center: point

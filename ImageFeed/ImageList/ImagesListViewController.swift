@@ -29,7 +29,12 @@ final class ImagesListViewController: UIViewController {
         super.viewDidLoad()
         
         // Добавляем отступы сверху и снизу у таблицы.
-        tableView.contentInset = UIEdgeInsets(top: 12, left: 0, bottom: 12, right: 0)
+        tableView.contentInset = UIEdgeInsets(
+            top: 12,
+            left: 0,
+            bottom: 12,
+            right: 0
+        )
         
         // Подписываемся на уведомление о загрузке новых фотографий.
         NotificationCenter.default.addObserver(
@@ -68,15 +73,8 @@ final class ImagesListViewController: UIViewController {
                 return
             }
             
-            // Загружаем большую картинку и передаём её на следующий экран.
-            KingfisherManager.shared.retrieveImage(with: url) { result in
-                switch result {
-                case .success(let value):
-                    viewController.image = value.image
-                case .failure(let error):
-                    print("[ImagesListViewController.prepare]: \(error)")
-                }
-            }
+            // Передаём URL, а SingleImageViewController сам загрузит картинку
+            viewController.imageURL = url
         } else {
             super.prepare(for: segue, sender: sender)
         }
@@ -127,6 +125,7 @@ extension ImagesListViewController: UITableViewDataSource {
             return UITableViewCell()
         }
         
+        // Будем получать события от кнопки лайка внутри ячейки.
         imageListCell.delegate = self
         
         // Настраиваем содержимое ячейки.
@@ -182,7 +181,7 @@ extension ImagesListViewController: UITableViewDelegate {
     
     // Вызывается при нажатии на ячейку.
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-        // Открываем экран большой картинки и передаём индекс выбранной строки.
+        // Передаём индекс выбранной фотографии на следующий экран.
         performSegue(withIdentifier: showSingleImageSegueIdentifier, sender: indexPath)
     }
     
@@ -211,6 +210,7 @@ extension ImagesListViewController: UITableViewDelegate {
     ) {
         // Проверяем, дошёл ли пользователь до конца списка.
         if indexPath.row + 1 == photos.count {
+            // Загружаем следующую страницу фотографий.
             ImagesListService.shared.fetchPhotosNextPage(
                 token: OAuth2TokenStorage.shared.token ?? ""
             ) { _ in }
@@ -218,15 +218,16 @@ extension ImagesListViewController: UITableViewDelegate {
     }
 }
 
-
+// MARK: - ImagesListCellDelegate
 extension ImagesListViewController: ImagesListCell.ImagesListCellDelegate {
     func imageListCellDidTapLike(_ cell: ImagesListCell) {
-        
+        // Определяем, в какой строке нажали кнопку лайка.
         guard let indexPath = tableView.indexPath(for: cell) else { return }
+        // Получаем фотографию, для которой меняем лайк.
         let photo = photos[indexPath.row]
-        
+        // Блокируем интерфейс на время сетевого запроса.
         UIBlockingProgressHUD.show()
-        
+        // Просим сервис поставить или снять лайк.
         ImagesListService.shared.changeLike(
             photoId: photo.id,
             isLike: !photo.isLiked,
@@ -234,18 +235,19 @@ extension ImagesListViewController: ImagesListCell.ImagesListCellDelegate {
         ) { [weak self] result in
             guard let self else { return }
 
+            // Запрос завершился — разблокируем интерфейс.
             UIBlockingProgressHUD.dismiss()
 
             switch result {
             case .success:
+                // Обновляем локальный массив фотографий.
                 self.photos = ImagesListService.shared.photos
+                // Обновляем состояние сердечка в ячейке.
                 cell.setIsLiked(self.photos[indexPath.row].isLiked)
-
             case .failure(let error):
+                // Пока просто выводим ошибку в консоль.
                 print("[ImagesListViewController.changeLike]: \(error)")
             }
         }
     }
-    
-    
 }

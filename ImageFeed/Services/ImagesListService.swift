@@ -142,6 +142,11 @@ final class ImagesListService {
     }
     
     
+    // Ставит или снимает лайк у фотографии.
+    // photoId — идентификатор фотографии.
+    // isLike = true  -> ставим лайк (POST).
+    // isLike = false -> снимаем лайк (DELETE).
+    // completion сообщает вызывающему коду об успехе или ошибке.
     func changeLike(
         photoId: String,
         isLike: Bool,
@@ -149,27 +154,41 @@ final class ImagesListService {
         _ completion: @escaping (Result<Void, Error>) -> Void
     ) {
         
+        // Собираем URL вида:
+        // /photos/{photoId}/like
         guard let url = URL(string: Constants.defaultBaseURLString + "/photos/\(photoId)/like") else {
             completion(.failure(NSError(domain: "ImagesListService", code: -2)))
             return
         }
         
-        // Создаём URLRequest на основе URL.
+        // Создаём сетевой запрос.
         var request = URLRequest(url: url)
-        // Определяем метод
+        // Если ставим лайк — используем POST.
+        // Если снимаем лайк — используем DELETE.
         request.httpMethod = isLike ? "POST" : "DELETE"
-        // Добавляем токен авторизации.
+        // Добавляем OAuth токен пользователя.
+        // Без него Unsplash не позволит ставить лайки.
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
+        // Отправляем запрос и декодируем ответ сервера.
+        // Для лайков Unsplash возвращает LikeResult.
         let task = urlSession.objectTask(for: request) { [weak self] (result: Result<LikeResult, Error>) in
             guard let self else { return }
-
+            // Если сервис уже уничтожен — дальше работать нельзя.
+            
             switch result {
+            // Сервер успешно поставил или снял лайк.
             case .success:
+                // Массив photos используется UI,
+                // поэтому обновляем его на главном потоке.
                 DispatchQueue.main.async {
+                    // Ищем фотографию, для которой меняли лайк.
                     if let index = self.photos.firstIndex(where: { $0.id == photoId }) {
+                        // Берём текущую фотографию.
                         let photo = self.photos[index]
 
+                        // Создаём копию фотографии,
+                        // но меняем состояние лайка на противоположное.
                         let newPhoto = Photo(
                             id: photo.id,
                             size: photo.size,
@@ -180,19 +199,24 @@ final class ImagesListService {
                             isLiked: !photo.isLiked
                         )
 
+                        // Заменяем старую фотографию обновлённой.
                         self.photos[index] = newPhoto
                     }
 
+                    // Сообщаем вызывающему коду, что всё прошло успешно.
                     completion(.success(()))
                 }
 
+            // Ошибка сети или декодинга ответа сервера.
             case .failure(let error):
                 DispatchQueue.main.async {
+                    // Передаём ошибку вызывающему коду.
                     completion(.failure(error))
                 }
             }
         }
 
+        // Запускаем сетевой запрос.
         task.resume()
         
     }
