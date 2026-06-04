@@ -151,19 +151,24 @@ extension ImagesListViewController {
 
         // Показываем индикатор, пока картинка загружается.
         cell.cellImage.kf.indicatorType = .activity
+        
+        // Показываем анимированную заглушку, пока картинка загружается
+        cell.showGradient()
+        
         // Загружаем картинку и обновляем высоту ячейки после загрузки.
         cell.cellImage.kf.setImage(with: url) { [weak self] _ in
+            cell.hideGradient()
             self?.tableView.reloadRows(at: [indexPath], with: .automatic)
         }
         
-        // Показываем дату создания фотографии.
+        // Показываем дату создания фотографии
         if let createdAt = photo.createdAt {
             cell.dateLabel.text = dateFormatter.string(from: createdAt)
         } else {
             cell.dateLabel.text = ""
         }
         
-        // Показываем состояние лайка.
+        // Показываем состояние лайка
         let likeImage = photo.isLiked
             ? UIImage(named: "like_button_on")
             : UIImage(named: "like_button_off")

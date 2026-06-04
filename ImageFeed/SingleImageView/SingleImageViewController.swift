@@ -44,8 +44,6 @@ class SingleImageViewController: UIViewController {
         // Без URL загружать нечего.
         guard let imageURL else { return }
         
-        //проверка работы алерта
-        //guard let imageURL = URL(string: "https://broken-url") else { return }
 
         // Показываем индикатор загрузки.
         UIBlockingProgressHUD.show()

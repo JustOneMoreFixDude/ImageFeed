@@ -36,11 +36,7 @@ final class ImagesListService {
     
     // Превращает строку даты из JSON в Date.
     // JSON приходит примерно так: "2016-05-03T11:00:28-04:00".
-    private lazy var dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ssZ"
-        return formatter
-    }()
+    private let dateFormatter = ISO8601DateFormatter()
     
     
     // Загружает следующую страницу фотографий.
@@ -210,6 +206,7 @@ final class ImagesListService {
             // Ошибка сети или декодинга ответа сервера.
             case .failure(let error):
                 DispatchQueue.main.async {
+                    print("[ImagesListService.changeLike]: \(error)")
                     // Передаём ошибку вызывающему коду.
                     completion(.failure(error))
                 }

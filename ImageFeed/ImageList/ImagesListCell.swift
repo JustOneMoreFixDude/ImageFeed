@@ -8,6 +8,8 @@ final class ImagesListCell: UITableViewCell {
     
     // Identifier ячейки из Storyboard.
     static let reuseIdentifier = "ImagesListCell"
+    // Анимированная заглушка во время загрузки картинки.
+    private var gradientView: GradientView?
     
     // Картинка фотографии.
     @IBOutlet var cellImage: UIImageView!
@@ -21,6 +23,8 @@ final class ImagesListCell: UITableViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         cellImage.kf.cancelDownloadTask()
+        gradientView?.removeFromSuperview()
+        gradientView = nil
     }
     
     
@@ -45,4 +49,20 @@ final class ImagesListCell: UITableViewCell {
         likeButton.setImage(image, for: .normal)
     }
     
+    // Показывает анимированную заглушку поверх изображения.
+    func showGradient() {
+        guard gradientView == nil else { return }
+
+        let gradient = GradientView(frame: cellImage.bounds)
+        gradient.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+        cellImage.addSubview(gradient)
+        gradientView = gradient
+    }
+
+    // Убирает заглушку после загрузки картинки.
+    func hideGradient() {
+        gradientView?.removeFromSuperview()
+        gradientView = nil
+    }
 }
