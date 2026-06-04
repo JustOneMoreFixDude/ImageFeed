@@ -221,5 +221,11 @@ final class ImagesListService {
         
     }
     
+    // Очистка для logout
+    func cleanPhotos() {
+        photos = []
+        lastLoadedPage = nil
+        task = nil
+    }
     
 }

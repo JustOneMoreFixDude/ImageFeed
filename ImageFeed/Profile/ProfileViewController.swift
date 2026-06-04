@@ -163,8 +163,38 @@ final class ProfileViewController: UIViewController {
         ])
     }
     
-    // Обрабатывает нажатие на кнопку выхода
+    // Обрабатывает нажатие на кнопку выхода.
+    // Сначала спрашивает подтверждение, затем очищает данные пользователя.
     @objc private func didTapLogoutButton() {
-        print("logout tapped")
+        let alert = UIAlertController(
+            title: "Пока, пока!",
+            message: "Уверены, что хотите выйти?",
+            preferredStyle: .alert
+        )
+
+        let cancelAction = UIAlertAction(
+            title: "Нет",
+            style: .cancel
+        )
+
+        let logoutAction = UIAlertAction(
+            title: "Да",
+            style: .destructive
+        ) { _ in
+            ProfileLogoutService.shared.logout()
+            self.switchToSplashViewController()
+        }
+
+        alert.addAction(cancelAction)
+        alert.addAction(logoutAction)
+
+        present(alert, animated: true)
+    }
+    
+    // Возвращает приложение на стартовый экран после logout.
+    private func switchToSplashViewController() {
+        guard let window = UIApplication.shared.windows.first else { return }
+        window.rootViewController = SplashViewController()
+        window.makeKeyAndVisible()
     }
 }

@@ -12,7 +12,8 @@ final class ProfileService {
 
     private init() {}
 
-    func fetchProfile(token: String, completion: @escaping (Result<Profile, Error>) -> Void) {
+    func fetchProfile(token: String, completion: @escaping (Result<Profile, Error>) -> Void
+    ) {
         assert(Thread.isMainThread) // убеждаемся, что на главном потоке
 
         if task != nil {
@@ -60,4 +61,10 @@ final class ProfileService {
         self.task = newTask
         newTask.resume()
     }
+    
+    // Очистка для logout
+    func cleanProfile() {
+        profile = nil
+    }
+    
 }
