@@ -42,10 +42,14 @@ final class ImagesListService {
         return formatter
     }()
     
+    
     // Загружает следующую страницу фотографий.
     // token нужен для Authorization header.
     // completion временно оставлен, чтобы было проще видеть результат или ошибку.
-    func fetchPhotosNextPage(token: String, completion: @escaping (Result<[Photo], Error>) -> Void) {
+    func fetchPhotosNextPage(
+        token: String,
+        completion: @escaping (Result<[Photo], Error>) -> Void
+    ) {
         // Если страниц ещё не грузили, lastLoadedPage nil, значит грузим страницу 1.
         // Если уже грузили, берём следующую страницу.
         let nextPage = (lastLoadedPage ?? 0) + 1
@@ -68,7 +72,7 @@ final class ImagesListService {
         var request = URLRequest(url: url)
         // GET означает: мы хотим получить данные с сервера.
         request.httpMethod = "GET"
-        // Добавляем токен авторизации, как в ProfileService.
+        // Добавляем токен авторизации
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         
         // Запускаем сетевой запрос.
@@ -137,6 +141,61 @@ final class ImagesListService {
         
     }
     
+    
+    func changeLike(
+        photoId: String,
+        isLike: Bool,
+        token: String,
+        _ completion: @escaping (Result<Void, Error>) -> Void
+    ) {
+        
+        guard let url = URL(string: Constants.defaultBaseURLString + "/photos/\(photoId)/like") else {
+            completion(.failure(NSError(domain: "ImagesListService", code: -2)))
+            return
+        }
+        
+        // Создаём URLRequest на основе URL.
+        var request = URLRequest(url: url)
+        // Определяем метод
+        request.httpMethod = isLike ? "POST" : "DELETE"
+        // Добавляем токен авторизации.
+        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        
+        let task = urlSession.objectTask(for: request) { [weak self] (result: Result<LikeResult, Error>) in
+            guard let self else { return }
+
+            switch result {
+            case .success:
+                DispatchQueue.main.async {
+                    if let index = self.photos.firstIndex(where: { $0.id == photoId }) {
+                        let photo = self.photos[index]
+
+                        let newPhoto = Photo(
+                            id: photo.id,
+                            size: photo.size,
+                            createdAt: photo.createdAt,
+                            welcomeDescription: photo.welcomeDescription,
+                            thumbImageURL: photo.thumbImageURL,
+                            largeImageURL: photo.largeImageURL,
+                            isLiked: !photo.isLiked
+                        )
+
+                        self.photos[index] = newPhoto
+                    }
+
+                    completion(.success(()))
+                }
+
+            case .failure(let error):
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
+            }
+        }
+
+        task.resume()
+        
+    }
     
     
 }

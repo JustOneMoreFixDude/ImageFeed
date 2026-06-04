@@ -23,4 +23,26 @@ final class ImagesListCell: UITableViewCell {
         cellImage.kf.cancelDownloadTask()
     }
     
+    
+    // кто хочет быть делегатом ячейки, должен уметь обработать нажатие лайка
+    protocol ImagesListCellDelegate: AnyObject {
+        func imageListCellDidTapLike(_ cell: ImagesListCell)
+    }
+    
+    // ссылка на того, кто будет слушать ячейку. Слушатель ImagesListViewController
+    weak var delegate: ImagesListCellDelegate?
+    
+    
+    @IBAction private func likeButtonClicked() {
+        delegate?.imageListCellDidTapLike(self)
+    }
+    
+    // метод для смены картинки сердечка
+    func setIsLiked(_ isLiked: Bool) {
+        let image = isLiked
+            ? UIImage(named: "like_button_on")
+            : UIImage(named: "like_button_off")
+        likeButton.setImage(image, for: .normal)
+    }
+    
 }

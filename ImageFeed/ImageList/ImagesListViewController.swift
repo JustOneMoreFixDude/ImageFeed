@@ -118,6 +118,7 @@ extension ImagesListViewController: UITableViewDataSource {
     
     // Создаёт и настраивает ячейку для конкретной строки.
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+            
         // Берём переиспользуемую ячейку из Storyboard.
         let cell = tableView.dequeueReusableCell(withIdentifier: ImagesListCell.reuseIdentifier, for: indexPath)
         
@@ -125,6 +126,8 @@ extension ImagesListViewController: UITableViewDataSource {
         guard let imageListCell = cell as? ImagesListCell else {
             return UITableViewCell()
         }
+        
+        imageListCell.delegate = self
         
         // Настраиваем содержимое ячейки.
         configCell(for: imageListCell, with: indexPath)
@@ -213,4 +216,36 @@ extension ImagesListViewController: UITableViewDelegate {
             ) { _ in }
         }
     }
+}
+
+
+extension ImagesListViewController: ImagesListCell.ImagesListCellDelegate {
+    func imageListCellDidTapLike(_ cell: ImagesListCell) {
+        
+        guard let indexPath = tableView.indexPath(for: cell) else { return }
+        let photo = photos[indexPath.row]
+        
+        UIBlockingProgressHUD.show()
+        
+        ImagesListService.shared.changeLike(
+            photoId: photo.id,
+            isLike: !photo.isLiked,
+            token: OAuth2TokenStorage.shared.token ?? ""
+        ) { [weak self] result in
+            guard let self else { return }
+
+            UIBlockingProgressHUD.dismiss()
+
+            switch result {
+            case .success:
+                self.photos = ImagesListService.shared.photos
+                cell.setIsLiked(self.photos[indexPath.row].isLiked)
+
+            case .failure(let error):
+                print("[ImagesListViewController.changeLike]: \(error)")
+            }
+        }
+    }
+    
+    
 }

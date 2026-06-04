@@ -22,3 +22,7 @@ struct ProfileResult: Decodable {
         case bio
     }
 }
+
+struct LikeResult: Decodable {
+    let photo: PhotoResult
+}
