@@ -1,11 +1,10 @@
-import Foundation
 import UIKit
 import Kingfisher
 
 
 // Экран просмотра одной фотографии.
 // Позволяет приблизить картинку двойным тапом и поделиться ей.
-class SingleImageViewController: UIViewController {
+final class SingleImageViewController: UIViewController {
     
     // ScrollView нужен для зума и перемещения картинки.
     @IBOutlet weak var scrollView: UIScrollView!
