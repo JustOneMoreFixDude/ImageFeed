@@ -12,13 +12,15 @@ final class ProfileViewController: UIViewController {
     private let logoutButton = UIButton(type: .system)
     private let labelsStackView = UIStackView()
     
-       
+    private var animationViews: [GradientView] = []
+    
     // MARK: - Lifecycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
 
         setupProfileView()
+        showProfileGradients()
         setupProfile()
         setupAvatar()
         setupObserver()
@@ -41,6 +43,7 @@ final class ProfileViewController: UIViewController {
     private func setupProfile() {
         if let profile = ProfileService.shared.profile {
             updateProfileDetails(profile: profile)
+            removeAnimationViews()
         }
     }
 
@@ -53,7 +56,9 @@ final class ProfileViewController: UIViewController {
             return
         }
 
-        avatarImageView.kf.setImage(with: url)
+        avatarImageView.kf.setImage(with: url) { [weak self] _ in
+            self?.removeAnimationViews()
+        }
     }
 
     // Подписывается на обновление аватарки через NotificationCenter
@@ -83,7 +88,9 @@ final class ProfileViewController: UIViewController {
             return
         }
         
-        avatarImageView.kf.setImage(with: url)
+        avatarImageView.kf.setImage(with: url) { [weak self] _ in
+            self?.removeAnimationViews()
+        }
     }
     
     
@@ -163,8 +170,88 @@ final class ProfileViewController: UIViewController {
         ])
     }
     
-    // Обрабатывает нажатие на кнопку выхода
+    // Показывает shimmer-заглушки на аватарке и текстах профиля.
+    private func showProfileGradients() {
+        view.layoutIfNeeded()
+
+        nameLabel.textColor = .clear
+        loginNameLabel.textColor = .clear
+        descriptionLabel.textColor = .clear
+
+        addGradient(
+            over: avatarImageView,
+            frame: avatarImageView.bounds,
+            cornerRadius: 35
+        )
+        addGradient(
+            over: nameLabel,
+            frame: CGRect(x: 0, y: 0, width: 223, height: 18),
+            cornerRadius: 9
+        )
+        addGradient(
+            over: loginNameLabel,
+            frame: CGRect(x: 0, y: 0, width: 89, height: 18),
+            cornerRadius: 9
+        )
+        addGradient(
+            over: descriptionLabel,
+            frame: CGRect(x: 0, y: 0, width: 67, height: 18),
+            cornerRadius: 9
+        )
+    }
+
+    // Создаёт shimmer-заглушку поверх конкретной View.
+    private func addGradient(over view: UIView, frame: CGRect, cornerRadius: CGFloat) {
+        let gradientView = GradientView(frame: frame)
+        gradientView.layer.cornerRadius = cornerRadius
+        gradientView.clipsToBounds = true
+        gradientView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+
+        view.addSubview(gradientView)
+        animationViews.append(gradientView)
+    }
+
+    private func removeAnimationViews() {
+        animationViews.forEach { $0.removeFromSuperview() }
+        animationViews.removeAll()
+
+        nameLabel.textColor = .ypWhite
+        loginNameLabel.textColor = .ypGray
+        descriptionLabel.textColor = .ypWhite
+    }
+    
+    // Обрабатывает нажатие на кнопку выхода.
+    // Сначала спрашивает подтверждение, затем очищает данные пользователя.
     @objc private func didTapLogoutButton() {
-        print("logout tapped")
+        let alert = UIAlertController(
+            title: "Пока, пока!",
+            message: "Уверены, что хотите выйти?",
+            preferredStyle: .alert
+        )
+
+        let cancelAction = UIAlertAction(
+            title: "Нет",
+            style: .cancel
+        )
+
+        let logoutAction = UIAlertAction(
+            title: "Да",
+            style: .destructive
+        ) { _ in
+            ProfileLogoutService.shared.logout()
+            self.switchToSplashViewController()
+        }
+
+        alert.addAction(cancelAction)
+        alert.addAction(logoutAction)
+
+        present(alert, animated: true)
+    }
+    
+    // Возвращает приложение на стартовый экран после logout.
+    private func switchToSplashViewController() {
+        guard let window = UIApplication.shared.windows.first else { return }
+        window.rootViewController = SplashViewController()
+        window.makeKeyAndVisible()
     }
 }

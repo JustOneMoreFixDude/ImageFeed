@@ -64,4 +64,11 @@ final class ProfileImageService {
         self.task = newTask
         newTask.resume()
     }
+    
+    // Очистка для logout
+    func cleanAvatar() {
+        avatarURL = nil
+        task = nil
+    }
+    
 }
