@@ -1,18 +1,37 @@
 import UIKit
 import WebKit
 
+// список того, что экран должен уметь.
+public protocol WebViewViewControllerProtocol: AnyObject {
+    var presenter: WebViewPresenterProtocol? { get set }
+    func load(request: URLRequest)
+    func setProgressValue(_ newValue: Float)
+    func setProgressHidden(_ isHidden: Bool)
+}
+
+// Протокол для передачи результата авторизации обратно в AuthViewController.
 protocol WebViewViewControllerDelegate: AnyObject {
     func webViewViewController(_ vc: WebViewViewController, didAuthenticateWithCode code: String) // vc - тот кто вызывает
     func webViewViewControllerDidCancel(_ vc: WebViewViewController)
 }
 
-final class WebViewViewController: UIViewController {
+// Экран авторизации Unsplash внутри WebView.
+// Показывает страницу логина и получает OAuth code после успешного входа.
+final class WebViewViewController: UIViewController & WebViewViewControllerProtocol {
+    
+    var presenter: (any WebViewPresenterProtocol)?
+    
+    func load(request: URLRequest) {
+        webView.load(request)
+    }
+    
     @IBOutlet private var webView: WKWebView!
     @IBOutlet private var progressView: UIProgressView!
     
     // Делегат получает результат авторизации.
     weak var delegate: WebViewViewControllerDelegate?
     
+    // Наблюдатель за изменением прогресса загрузки страницы в WebView.
     private var estimatedProgressObservation: NSKeyValueObservation?
     
     // Помогает проверить, что контроллер освобождается из памяти.
@@ -21,31 +40,35 @@ final class WebViewViewController: UIViewController {
     }
     
     override func viewDidLoad() {
+        // Первичная настройка экрана после загрузки View из Storyboard.
         super.viewDidLoad()
         // Будем получать события переходов внутри WebView.
         webView.navigationDelegate = self
         // Открываем страницу авторизации Unsplash.
-        loadAuthView()
+        presenter?.viewDidLoad()
         
         // Следим за прогрессом загрузки страницы.
         estimatedProgressObservation = webView.observe(
             \.estimatedProgress,
              options: [.new]
         ) { [weak self] _, _ in
-            self?.updateProgress()
+            guard let self else { return }
+            self.presenter?.didUpdateProgressValue(self.webView.estimatedProgress)
         }
     }
     
+    // Нажатие на кнопку «Назад». Отменяем авторизацию.
     @IBAction private func didTapBackButton(_ sender: Any?) {
         // Сообщаем делегату, что пользователь отменил авторизацию.
         delegate?.webViewViewControllerDidCancel(self)
     }
     
+    // Вызывается после появления экрана на экране пользователя.
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
         // Обновляем индикатор прогресса.
-        updateProgress()
+        presenter?.didUpdateProgressValue(webView.estimatedProgress)
     }
     
     override func viewDidDisappear(_ animated: Bool) {
@@ -54,40 +77,20 @@ final class WebViewViewController: UIViewController {
     
 
     
-    private func updateProgress() {
-        // Передаём прогресс загрузки в progressView.
-        progressView.progress = Float(webView.estimatedProgress)
-        // Когда страница загружена полностью, скрываем индикатор.
-        progressView.isHidden = fabs(webView.estimatedProgress - 1.0) <= 0.0001
+    func setProgressValue(_ newValue: Float) {
+        progressView.progress = newValue
+    }
+
+    func setProgressHidden(_ isHidden: Bool) {
+        progressView.isHidden = isHidden
     }
     
-    private func loadAuthView() {
-        // Собираем URL страницы авторизации.
-        guard var urlComponents = URLComponents(string: Constants.API.unsplashAuthorizeURLString) else {
-            return
-        }
-        // Добавляем параметры OAuth авторизации.
-        urlComponents.queryItems = [
-            URLQueryItem(name: "client_id", value: Constants.accessKey),
-            URLQueryItem(name: "redirect_uri", value: Constants.redirectURI),
-            URLQueryItem(name: "response_type", value: "code"),
-            URLQueryItem(name: "scope", value: Constants.accessScope)
-        ]
-        
-        guard let url = urlComponents.url else {
-            return
-        }
-        
-        // Создаём и открываем запрос в WebView.
-        let request = URLRequest(url: url)
-        webView.load(request)
-        //print("<!!!2> request == \(request)")
-    }
 }
 
 
 
 
+// Обработка переходов и событий внутри WebView.
 extension WebViewViewController: WKNavigationDelegate {
     
     // Вызывается при каждом переходе внутри WebView.
@@ -102,30 +105,20 @@ extension WebViewViewController: WKNavigationDelegate {
         if let code = code(from: navigationAction) {
             // Передаём код авторизации делегату.
             delegate?.webViewViewController(self, didAuthenticateWithCode: code) // сообщаем наверх: под получен
-            //print("!!! Произошел cancel\n")
             // Останавливаем переход, код уже получен.
             decisionHandler(.cancel) // НЕ открываем эту страницу дальше
         } else {
-            //print("!!! Произошел allow\n")
             // Разрешаем обычный переход.
             decisionHandler(.allow) // продолжай открывать страницу как обычно
         }
     }
     
-    // Ищет code в URL после успешной авторизации.
+    // Извлекаем code из redirect URL после успешной авторизации.
     private func code(from navigationAction: WKNavigationAction) -> String? {
-        if
-            let url = navigationAction.request.url,
-            let urlComponents = URLComponents(string: url.absoluteString),
-            urlComponents.path == "/oauth/authorize/native",
-            let items = urlComponents.queryItems,
-            let codeItem = items.first(where: {$0.name == "code"})
-        {
-            // Нашли код авторизации.
-            return codeItem.value
-        } else {
-            return nil
+        if let url = navigationAction.request.url {
+            return presenter?.code(from: url)
         }
+        return nil
     }
     
 }
