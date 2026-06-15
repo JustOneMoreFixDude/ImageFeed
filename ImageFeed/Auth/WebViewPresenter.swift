@@ -2,7 +2,7 @@ import Foundation
 
 // Протокол презентера для WebViewViewController.
 // ViewController знает только этот протокол, а не конкретный класс WebViewPresenter.
-// Это нужно, чтобы в тестах подставлять PresenterSpy.
+// Это нужно, чтобы в тестах подставлять PresenterSpy, а так бы я этим цирком не занимался
 public protocol WebViewPresenterProtocol {
     // Ссылка на экран. Через неё Presenter просит ViewController обновить UI.
     var view: WebViewViewControllerProtocol? { get set }

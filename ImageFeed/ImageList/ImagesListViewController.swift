@@ -3,7 +3,7 @@ import Kingfisher
 
 // Экран ленты фотографий.
 // Показывает список фото, загружает новые страницы и открывает выбранную картинку.
-final class ImagesListViewController: UIViewController {
+final class ImagesListViewController: UIViewController, ImagesListViewControllerProtocol {
     
     // Identifier перехода на экран большой картинки из Storyboard.
     private let showSingleImageSegueIdentifier = "ShowSingleImage"
@@ -23,10 +23,27 @@ final class ImagesListViewController: UIViewController {
     // После загрузки новых данных массив обновляется из ImagesListService.
     private var photos: [Photo] = []
     
+    // Presenter — мозг экрана ленты.
+    // ViewController показывает таблицу, Presenter решает, когда грузить данные.
+    private var presenter: ImagesListPresenterProtocol!
+    
+    // configure нужен для связи ViewController и Presenter.
+    // В обычном приложении сюда передаём настоящий ImagesListPresenter.
+    // В тестах сюда можно будет передать ImagesListPresenterSpy.
+    func configure(_ presenter: ImagesListPresenterProtocol) {
+        self.presenter = presenter
+        presenter.view = self
+    }
+    
     // Вызывается один раз после загрузки экрана.
     // Здесь настраиваем таблицу, подписываемся на обновления и запускаем первую загрузку фото.
     override func viewDidLoad() {
         super.viewDidLoad()
+        // Если Presenter ещё не передали снаружи, создаём настоящий Presenter.
+        // Это нужно для обычного запуска приложения.
+        if presenter == nil {
+            configure(ImagesListPresenter())
+        }
         
         // Добавляем отступы сверху и снизу у таблицы.
         tableView.contentInset = UIEdgeInsets(
@@ -44,11 +61,9 @@ final class ImagesListViewController: UIViewController {
             object: nil
         )
         
-        // Загружаем первую страницу фотографий.
-        ImagesListService.shared.fetchPhotosNextPage(
-            token: OAuth2TokenStorage.shared.token ?? ""
-        ) { _ in }
-        
+        // Сообщаем Presenter, что экран загрузился.
+        // Presenter сам запустит первую загрузку фотографий.
+        presenter.viewDidLoad()
     }
     
     // Вызывается перед переходом на экран большой картинки.
@@ -84,24 +99,49 @@ final class ImagesListViewController: UIViewController {
     // Вызывается, когда ImagesListService сообщил о новых фотографиях.
     // Добавляет новые строки в таблицу с анимацией.
     @objc private func updateTableViewAnimated() {
-        // Сколько фото было на экране до обновления.
-        let oldCount = photos.count
-        // Забираем актуальный массив из сервиса.
-        let newPhotos = ImagesListService.shared.photos
-        // Сколько фото стало после загрузки.
-        let newCount = newPhotos.count
-        // Обновляем локальный массив, из которого питается таблица.
-        photos = newPhotos
-        // Создаём индексы только для новых строк.
-        if oldCount != newCount {
-            let indexPaths = (oldCount..<newCount).map {
-                IndexPath(row: $0, section: 0)
-            }
-            // Анимированно вставляем новые строки в таблицу.
-            tableView.performBatchUpdates {
-                tableView.insertRows(at: indexPaths, with: .automatic)
-            }
+        // Сервис сообщил, что фотографии обновились.
+        // Дальше Presenter решит, какие строки нужно вставить.
+        presenter.didReceivePhotosUpdate()
+    }
+    
+    // Метод из ImagesListViewControllerProtocol.
+    // Presenter передаёт сюда новый массив фотографий.
+    func updatePhotos(_ photos: [Photo]) {
+        self.photos = photos
+    }
+    
+    // Метод из ImagesListViewControllerProtocol.
+    // Presenter уже посчитал indexPath новых строк, а ViewController только обновляет UI.
+    func insertRows(at indexPaths: [IndexPath]) {
+        tableView.performBatchUpdates {
+            tableView.insertRows(at: indexPaths, with: .automatic)
         }
+    }
+    
+    // Метод из ImagesListViewControllerProtocol.
+    // Presenter просит заблокировать интерфейс на время сетевого запроса.
+    func showBlockingProgressHUD() {
+        UIBlockingProgressHUD.show()
+    }
+    
+    // Метод из ImagesListViewControllerProtocol.
+    // Presenter просит разблокировать интерфейс после завершения сетевого запроса.
+    func dismissBlockingProgressHUD() {
+        UIBlockingProgressHUD.dismiss()
+    }
+    
+    // Метод из ImagesListViewControllerProtocol.
+    // Presenter сообщает, что лайк у конкретной фотографии изменился.
+    func updateLike(isLiked: Bool, at index: Int) {
+        let indexPath = IndexPath(row: index, section: 0)
+        guard let cell = tableView.cellForRow(at: indexPath) as? ImagesListCell else { return }
+        cell.setIsLiked(isLiked)
+    }
+    
+    // Метод из ImagesListViewControllerProtocol.
+    // Presenter сообщает, что изменение лайка завершилось ошибкой.
+    func showLikeError(_ error: Error) {
+        print("[ImagesListViewController.changeLike]: \(error)")
     }
 }
 
@@ -213,13 +253,9 @@ extension ImagesListViewController: UITableViewDelegate {
         willDisplay cell: UITableViewCell,
         forRowAt indexPath: IndexPath
     ) {
-        // Проверяем, дошёл ли пользователь до конца списка.
-        if indexPath.row + 1 == photos.count {
-            // Загружаем следующую страницу фотографий.
-            ImagesListService.shared.fetchPhotosNextPage(
-                token: OAuth2TokenStorage.shared.token ?? ""
-            ) { _ in }
-        }
+        // Сообщаем Presenter, какая строка скоро появится на экране.
+        // Presenter сам решит, надо ли загружать следующую страницу.
+        presenter.willDisplayPhoto(at: indexPath.row)
     }
 }
 
@@ -228,31 +264,9 @@ extension ImagesListViewController: ImagesListCell.ImagesListCellDelegate {
     func imageListCellDidTapLike(_ cell: ImagesListCell) {
         // Определяем, в какой строке нажали кнопку лайка.
         guard let indexPath = tableView.indexPath(for: cell) else { return }
-        // Получаем фотографию, для которой меняем лайк.
-        let photo = photos[indexPath.row]
-        // Блокируем интерфейс на время сетевого запроса.
-        UIBlockingProgressHUD.show()
-        // Просим сервис поставить или снять лайк.
-        ImagesListService.shared.changeLike(
-            photoId: photo.id,
-            isLike: !photo.isLiked,
-            token: OAuth2TokenStorage.shared.token ?? ""
-        ) { [weak self] result in
-            guard let self else { return }
 
-            // Запрос завершился — разблокируем интерфейс.
-            UIBlockingProgressHUD.dismiss()
-
-            switch result {
-            case .success:
-                // Обновляем локальный массив фотографий.
-                self.photos = ImagesListService.shared.photos
-                // Обновляем состояние сердечка в ячейке.
-                cell.setIsLiked(self.photos[indexPath.row].isLiked)
-            case .failure(let error):
-                // Пока просто выводим ошибку в консоль.
-                print("[ImagesListViewController.changeLike]: \(error)")
-            }
-        }
+        // Сообщаем Presenter, что пользователь нажал лайк у конкретной фотографии.
+        // Presenter сам решит, какой запрос отправить и что обновить после ответа.
+        presenter.didTapLike(at: indexPath.row)
     }
 }

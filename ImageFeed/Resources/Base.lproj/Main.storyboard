@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="24765" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="24765" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="TdW-47-EBO">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
         <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="24743"/>
@@ -19,6 +19,7 @@
                         <subviews>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="NJ3-vw-3gv">
                                 <rect key="frame" x="16" y="612" width="361" height="48"/>
+                                <accessibility key="accessibilityConfiguration" identifier="Authenticate"/>
                                 <constraints>
                                     <constraint firstAttribute="height" constant="48" id="iXT-G7-B4k"/>
                                 </constraints>
@@ -65,7 +66,7 @@
         <!--Web View View Controller-->
         <scene sceneID="aBp-pQ-ey2">
             <objects>
-                <viewController id="09s-Wg-U9X" customClass="WebViewViewController" customModule="ImageFeed" customModuleProvider="target" sceneMemberID="viewController">
+                <viewController storyboardIdentifier="WebViewViewController" id="09s-Wg-U9X" customClass="WebViewViewController" customModule="ImageFeed" customModuleProvider="target" sceneMemberID="viewController">
                     <view key="view" contentMode="scaleToFill" id="NEF-6J-ID3">
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -94,7 +95,7 @@
                             <constraint firstItem="0k0-Hd-b2Q" firstAttribute="top" secondItem="bU4-kY-hv0" secondAttribute="top" id="zdt-gF-Rck"/>
                         </constraints>
                     </view>
-                    <navigationItem key="navigationItem" id="KDp-5S-hsV">
+                    <navigationItem key="navigationItem" customizationIdentifier="singleImageBackButton" id="KDp-5S-hsV">
                         <nil key="title"/>
                     </navigationItem>
                     <connections>
@@ -266,6 +267,7 @@
                             </button>
                             <button opaque="NO" contentMode="scaleToFill" contentHorizontalAlignment="center" contentVerticalAlignment="center" buttonType="system" lineBreakMode="middleTruncation" translatesAutoresizingMaskIntoConstraints="NO" id="jfr-BH-xdh" userLabel="backwardButton">
                                 <rect key="frame" x="8" y="67" width="48" height="48"/>
+                                <accessibility key="accessibilityConfiguration" identifier="singleImageBackButton"/>
                                 <constraints>
                                     <constraint firstAttribute="height" constant="48" id="4wF-5V-PRN"/>
                                     <constraint firstAttribute="width" constant="48" id="k8O-aQ-HA4"/>

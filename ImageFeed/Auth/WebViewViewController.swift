@@ -34,16 +34,16 @@ final class WebViewViewController: UIViewController & WebViewViewControllerProto
     // Наблюдатель за изменением прогресса загрузки страницы в WebView.
     private var estimatedProgressObservation: NSKeyValueObservation?
     
-    // Помогает проверить, что контроллер освобождается из памяти.
-    deinit {
-        print("\(String(describing: type(of: self))) помер")
-    }
-    
     override func viewDidLoad() {
         // Первичная настройка экрана после загрузки View из Storyboard.
         super.viewDidLoad()
+        
+        // Добавляю identifier самому WKWebView для UI-тестов
+        webView.accessibilityIdentifier = "UnsplashWebView"
+        
         // Будем получать события переходов внутри WebView.
         webView.navigationDelegate = self
+        
         // Открываем страницу авторизации Unsplash.
         presenter?.viewDidLoad()
         
@@ -104,7 +104,7 @@ extension WebViewViewController: WKNavigationDelegate {
         // Проверяем, не пришёл ли код авторизации.
         if let code = code(from: navigationAction) {
             // Передаём код авторизации делегату.
-            delegate?.webViewViewController(self, didAuthenticateWithCode: code) // сообщаем наверх: под получен
+            delegate?.webViewViewController(self, didAuthenticateWithCode: code) // сообщаем наверх: код получен
             // Останавливаем переход, код уже получен.
             decisionHandler(.cancel) // НЕ открываем эту страницу дальше
         } else {

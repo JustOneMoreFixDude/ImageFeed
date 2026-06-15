@@ -1,8 +1,7 @@
 import Foundation
 
 // Протокол хелпера авторизации.
-// Нужен, чтобы Presenter зависел не от конкретного AuthHelper,
-// а от договора. Потом в тестах сюда можно будет подставить Stub.
+// Нужен, чтобы Presenter зависел не от конкретного AuthHelper
 protocol AuthHelperProtocol {
     // Собирает URLRequest для открытия страницы авторизации Unsplash.
     func authRequest() -> URLRequest?
@@ -19,7 +18,6 @@ final class AuthHelper: AuthHelperProtocol {
     // Конфигурация с accessKey, redirectURI, scope и адресами Unsplash.
     let configuration: AuthConfiguration
     
-    // По умолчанию используем обычную production-конфигурацию.
     // В тестах сюда можно передать другую конфигурацию.
     init(configuration: AuthConfiguration = .standard) {
         self.configuration = configuration

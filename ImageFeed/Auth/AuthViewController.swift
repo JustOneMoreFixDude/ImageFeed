@@ -9,7 +9,6 @@ protocol AuthViewControllerDelegate: AnyObject {
 
 // Первый экран авторизации.
 // Сам WebView тут не живёт — этот контроллер только открывает WebViewViewController
-// и потом обменивает полученный authorization code на OAuth token.
 final class AuthViewController: UIViewController {
     
     // Identifier segue из Storyboard.
@@ -69,7 +68,6 @@ final class AuthViewController: UIViewController {
 // Получаем события от WebViewViewController: успешный code или отмену авторизации.
 extension AuthViewController: WebViewViewControllerDelegate {
     // WebViewViewController нашёл authorization code в redirect URL.
-    // Здесь закрываем WebView и меняем code на настоящий access token.
     func webViewViewController(_ vc: WebViewViewController, didAuthenticateWithCode code: String) {
         // Закрываем WebView и начинаем обмен authorization code на OAuth token.
         vc.dismiss(animated: true) { [weak self] in
