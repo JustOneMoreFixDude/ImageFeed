@@ -52,7 +52,6 @@ final class AuthHelper: AuthHelperProtocol {
     // и добавляет в URL параметр code. Здесь мы этот code достаём.
     func code(from url: URL) -> String? {
         if let urlComponents = URLComponents(string: url.absoluteString),
-           // Проверяем, что это именно нужный redirect URL, а не любой другой переход внутри WebView.
            urlComponents.path == "/oauth/authorize/native",
            let items = urlComponents.queryItems,
            let codeItem = items.first(where: { $0.name == "code" })
