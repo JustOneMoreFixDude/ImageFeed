@@ -1,7 +1,7 @@
 import UIKit
 import Kingfisher
 
-final class ProfileViewController: UIViewController {
+final class ProfileViewController: UIViewController, ProfileViewControllerProtocol {
     
     // MARK: - UI Elements
     
@@ -14,14 +14,35 @@ final class ProfileViewController: UIViewController {
     
     private var animationViews: [GradientView] = []
     
+    // Presenter — мозг экрана профиля.
+    // ViewController показывает UI, Presenter решает, какие данные показать.
+    private var presenter: ProfilePresenterProtocol!
+
+    // configure нужен для связи ViewController и Presenter.
+    // В обычном приложении сюда передаём настоящий ProfilePresenter.
+    // В тестах сюда можно будет передать ProfilePresenterSpy.
+    func configure(_ presenter: ProfilePresenterProtocol) {
+        self.presenter = presenter
+        presenter.view = self
+    }
+    
     // MARK: - Lifecycle
     
     override func viewDidLoad() {
         super.viewDidLoad()
-
+        // Если Presenter ещё не передали снаружи, создаём настоящий Presenter.
+        // Это нужно для обычного запуска приложения.
+        if presenter == nil {
+            configure(ProfilePresenter())
+        }
+        
         setupProfileView()
         showProfileGradients()
-        setupProfile()
+        
+        // Сообщаем Presenter, что экран загрузился.
+        // Дальше Presenter сам решит, нужно ли обновлять профиль.
+        presenter.viewDidLoad()
+        
         setupAvatar()
         setupObserver()
     }
@@ -37,14 +58,6 @@ final class ProfileViewController: UIViewController {
         setupViews()
         setupHierarchy()
         setupConstraints()
-    }
-
-    // Заполняет лейблы данными профиля
-    private func setupProfile() {
-        if let profile = ProfileService.shared.profile {
-            updateProfileDetails(profile: profile)
-            removeAnimationViews()
-        }
     }
 
     // Загружает уже сохранённую аватарку пользователя
@@ -71,8 +84,9 @@ final class ProfileViewController: UIViewController {
         )
     }
     
-    // Обновляет текстовые данные профиля на экране
-    private func updateProfileDetails(profile: Profile) {
+    // Метод из ProfileViewControllerProtocol.
+    // Presenter вызывает его, когда нужно показать данные профиля на экране.
+    func updateProfileDetails(profile: Profile) {
         nameLabel.text = profile.name
         loginNameLabel.text = profile.loginName
         descriptionLabel.text = profile.bio
@@ -223,6 +237,12 @@ final class ProfileViewController: UIViewController {
     // Обрабатывает нажатие на кнопку выхода.
     // Сначала спрашивает подтверждение, затем очищает данные пользователя.
     @objc private func didTapLogoutButton() {
+        presenter.didTapLogoutButton()
+    }
+    
+    // Метод из ProfileViewControllerProtocol.
+    // Presenter вызывает его, когда нужно показать подтверждение выхода.
+    func showLogoutAlert() {
         let alert = UIAlertController(
             title: "Пока, пока!",
             message: "Уверены, что хотите выйти?",
@@ -237,9 +257,8 @@ final class ProfileViewController: UIViewController {
         let logoutAction = UIAlertAction(
             title: "Да",
             style: .destructive
-        ) { _ in
-            ProfileLogoutService.shared.logout()
-            self.switchToSplashViewController()
+        ) { [weak self] _ in
+            self?.presenter.logoutConfirmed()
         }
 
         alert.addAction(cancelAction)
@@ -248,8 +267,9 @@ final class ProfileViewController: UIViewController {
         present(alert, animated: true)
     }
     
-    // Возвращает приложение на стартовый экран после logout.
-    private func switchToSplashViewController() {
+    // Метод из ProfileViewControllerProtocol.
+    // Presenter вызывает его после подтверждённого logout.
+    func switchToSplashViewController() {
         guard let window = UIApplication.shared.windows.first else { return }
         window.rootViewController = SplashViewController()
         window.makeKeyAndVisible()

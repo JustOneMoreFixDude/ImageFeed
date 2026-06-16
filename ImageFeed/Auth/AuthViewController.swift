@@ -1,27 +1,22 @@
 import UIKit
 import ProgressHUD
 
-/* Делегат, через который AuthViewController сообщает наружу: авторизация прошла или отменена. */
 protocol AuthViewControllerDelegate: AnyObject {
     func didAuthenticate(_ vc: AuthViewController)
 }
 
-// Экран авторизации с WKWebView. Загружает страницу Unsplash OAuth
 final class AuthViewController: UIViewController {
     
     private let showWebViewSegueIdentifier = "ShowWebView"
     
     weak var delegate: AuthViewControllerDelegate?
     
-    // Выполняет первоначальную настройку экрана авторизации
     override func viewDidLoad() {
         super.viewDidLoad()
         configureBackButton()
     }
     
-    // prepare = хук перед переходом между экранами
-    // вызывается автоматические перед переходом на другой экран, что бы передать другому экрану данные
-    // Передает delegate в WebViewViewController перед переходом
+    // Настраивает WebViewViewController перед переходом.
     override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
         if segue.identifier == showWebViewSegueIdentifier {
             guard
@@ -30,13 +25,17 @@ final class AuthViewController: UIViewController {
                 assertionFailure("Failed to prepare for \(showWebViewSegueIdentifier)")
                 return
             }
+            let authHelper = AuthHelper()
+            let webViewPresenter = WebViewPresenter(authHelper: authHelper)
+            webViewViewController.presenter = webViewPresenter
+            webViewPresenter.view = webViewViewController
+            
             webViewViewController.delegate = self
         } else {
             super.prepare(for: segue, sender: sender)
         }
     }
     
-    // Настраивает кастомную кнопку Back в Navigation Bar
     private func configureBackButton() {
         navigationController?.navigationBar.backIndicatorImage = UIImage(resource: .navBackButton)
         navigationController?.navigationBar.backIndicatorTransitionMaskImage = UIImage(resource: .navBackButton)
@@ -46,9 +45,10 @@ final class AuthViewController: UIViewController {
     
 }
 
+// MARK: - WebViewViewControllerDelegate
 extension AuthViewController: WebViewViewControllerDelegate {
-    // Получает code авторизации из WebView и запрашивает OAuth token
     func webViewViewController(_ vc: WebViewViewController, didAuthenticateWithCode code: String) {
+        // Обмениваем code на token после закрытия WebView.
         vc.dismiss(animated: true) { [weak self] in
             UIBlockingProgressHUD.show()
             
@@ -70,12 +70,10 @@ extension AuthViewController: WebViewViewControllerDelegate {
         }
     }
     
-    // Закрывает WebView при отмене авторизации
     func webViewViewControllerDidCancel(_ vc: WebViewViewController) {
         vc.dismiss(animated: true)
     }
     
-    // Показывает alert при ошибке авторизации
     private func showAuthErrorAlert() {
         let alert = UIAlertController(
             title: "Что-то пошло не так",
